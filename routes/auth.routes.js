@@ -40,42 +40,6 @@ router.get(
   authController.oauthCallback
 );
 
-// ─── Facebook OAuth ───────────────────────────────────────────────────────────
-// Step 1: redirect browser → Facebook login
-router.get(
-  "/facebook",
-  passport.authenticate("facebook", { scope: ["email"] })
-);
 
-// Step 2: Facebook redirects back here after user grants permission
-router.get(
-  "/facebook/callback",
-  passport.authenticate("facebook", {
-    failureRedirect: `${process.env.CLIENT_URL
-      ? process.env.CLIENT_URL.split(",")[0].trim()
-      : "http://localhost:5173"}/oauth/callback?error=facebook_auth_failed`,
-    session: false,
-  }),
-  authController.oauthCallback
-);
-
-// ─── Apple OAuth ──────────────────────────────────────────────────────────────
-// Step 1: redirect browser → Apple login
-router.get(
-  "/apple",
-  passport.authenticate("apple", { scope: ["name", "email"] })
-);
-
-// Step 2: Apple POSTs back here (unlike Google/Facebook which use GET)
-router.post(
-  "/apple/callback",
-  passport.authenticate("apple", {
-    failureRedirect: `${process.env.CLIENT_URL
-      ? process.env.CLIENT_URL.split(",")[0].trim()
-      : "http://localhost:5173"}/oauth/callback?error=apple_auth_failed`,
-    session: false,
-  }),
-  authController.oauthCallback
-);
 
 module.exports = router;

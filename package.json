@@ -13,8 +13,6 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.13",
     "passport": "^0.7.0",
-    "passport-apple": "^2.0.2",
-    "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "resend": "^6.12.3"
   },

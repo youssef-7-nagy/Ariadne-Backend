@@ -21,7 +21,7 @@ if (isConfigured) {
       };
     },
   });
-  console.log('✅ Multer configured with CloudinaryStorage.');
+  console.log('[OK] Multer configured with CloudinaryStorage.');
 } else {
   storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
@@ -30,7 +30,7 @@ if (isConfigured) {
       cb(null, `${unique}${path.extname(file.originalname)}`);
     }
   });
-  console.log('⚠️ Multer configured with Local diskStorage.');
+  console.log('[WARN] Multer configured with Local diskStorage.');
 }
 
 const uploadService = multer({

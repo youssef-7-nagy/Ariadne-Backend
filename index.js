@@ -98,10 +98,10 @@ app.use("/api/admin", adminRouter);
   const { transporter } = require('./utils/mailer');
   transporter.verify((error, success) => {
     if (error) {
-      console.error('❌ Nodemailer SMTP connection FAILED:', error.message);
-      console.error('   → Check SMTP_USER and SMTP_PASS in your .env file.');
+      console.error('[ERROR] Nodemailer SMTP connection FAILED:', error.message);
+      console.error('   -> Check SMTP_USER and SMTP_PASS in your .env file.');
     } else {
-      console.log('✅ Nodemailer SMTP connection verified — ready to send emails.');
+      console.log('[OK] Nodemailer SMTP connection verified - ready to send emails.');
     }
   });
 

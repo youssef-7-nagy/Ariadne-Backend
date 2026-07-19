@@ -1,7 +1,6 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const FacebookStrategy = require("passport-facebook").Strategy;
-const AppleStrategy = require("passport-apple");
+
 const { User } = require("../models/User");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -109,94 +108,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     )
   );
 } else {
-  console.warn("⚠️  Google OAuth is not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env to enable it.");
+  console.warn("[WARN] Google OAuth is not configured - set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env to enable it.");
 }
 
-// ─── Facebook Strategy ────────────────────────────────────────────────────────
 
-if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
-  passport.use(
-    new FacebookStrategy(
-      {
-        clientID: process.env.FACEBOOK_APP_ID,
-        clientSecret: process.env.FACEBOOK_APP_SECRET,
-        callbackURL: process.env.FACEBOOK_CALLBACK_URL,
-        profileFields: ["id", "displayName", "emails", "photos"],
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          const email =
-            profile.emails && profile.emails.length > 0
-              ? profile.emails[0].value
-              : undefined;
-
-          const avatar =
-            profile.photos && profile.photos.length > 0
-              ? profile.photos[0].value
-              : "";
-
-          const name = profile.displayName || "Facebook User";
-
-          const user = await findOrCreateOAuthUser({
-            providerField: "facebookId",
-            providerId: profile.id,
-            email,
-            name,
-            avatar,
-          });
-
-          return done(null, user);
-        } catch (err) {
-          return done(err, null);
-        }
-      }
-    )
-  );
-} else {
-  console.warn("⚠️  Facebook OAuth is not configured — set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in .env to enable it.");
-}
-
-// ─── Apple Strategy ───────────────────────────────────────────────────────────
-
-if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
-  passport.use(
-    new AppleStrategy(
-      {
-        clientID: process.env.APPLE_CLIENT_ID,
-        teamID: process.env.APPLE_TEAM_ID,
-        keyID: process.env.APPLE_KEY_ID,
-        privateKeyString: process.env.APPLE_PRIVATE_KEY,
-        callbackURL: process.env.APPLE_CALLBACK_URL,
-        scope: ["name", "email"],
-      },
-      async (accessToken, refreshToken, idToken, profile, done) => {
-        try {
-          // Apple provides the user's email in the idToken (decoded JWT)
-          // and the user's name only on FIRST authorization
-          const email = profile.email || undefined;
-          const name =
-            profile.name
-              ? `${profile.name.firstName || ""} ${profile.name.lastName || ""}`.trim()
-              : "Apple User";
-
-          const user = await findOrCreateOAuthUser({
-            providerField: "appleId",
-            providerId: profile.id,
-            email,
-            name,
-            avatar: "", // Apple doesn't provide profile photos
-          });
-
-          return done(null, user);
-        } catch (err) {
-          return done(err, null);
-        }
-      }
-    )
-  );
-} else {
-  console.warn("⚠️  Apple OAuth is not configured — set APPLE_CLIENT_ID, APPLE_TEAM_ID, APPLE_KEY_ID, and APPLE_PRIVATE_KEY in .env to enable it.");
-}
 
 module.exports = passport;
 

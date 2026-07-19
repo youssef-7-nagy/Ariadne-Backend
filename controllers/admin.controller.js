@@ -18,7 +18,15 @@ exports.getCategories = async (req, res) => {
 exports.createCategory = async (req, res) => {
   try {
     const { name, slug, description } = req.body;
-    const coverImage = req.file ? req.file.path : undefined;
+    // req.file.path is the full OS path on local disk; we need the URL-friendly path.
+    // If using Cloudinary, path is already a full https:// URL. If using local disk,
+    // path is an OS filepath — convert it to a relative /uploads/... URL.
+    const fileToUrl = (file) => {
+      if (!file) return undefined;
+      if (file.path.startsWith('http')) return file.path; // Cloudinary URL
+      return `/uploads/${file.filename}`;                  // local disk -> relative URL
+    };
+    const coverImage = fileToUrl(req.file);
     const category = new Category({ name, slug, description, ...(coverImage && { coverImage }) });
     await category.save();
     res.status(201).json({ success: true, data: category });
@@ -31,7 +39,11 @@ exports.updateCategory = async (req, res) => {
   try {
     const { name, slug, description } = req.body;
     const update = { name, slug, description };
-    if (req.file) update.coverImage = req.file.path;
+    if (req.file) {
+      update.coverImage = req.file.path.startsWith('http')
+        ? req.file.path                     // Cloudinary URL
+        : `/uploads/${req.file.filename}`;  // local disk -> relative URL
+    }
     const category = await Category.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
     res.json({ success: true, data: category });

@@ -8,9 +8,9 @@ if (isConfigured) {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET
   });
-  console.log('✅ Cloudinary initialized with cloud_name:', process.env.CLOUDINARY_CLOUD_NAME);
+  console.log('[OK] Cloudinary initialized with cloud_name:', process.env.CLOUDINARY_CLOUD_NAME);
 } else {
-  console.warn('⚠️ Cloudinary keys missing. Will fallback to local upload storage.');
+  console.warn('[WARN] Cloudinary keys missing. Will fallback to local upload storage.');
 }
 
 const extractCloudinaryPublicId = (url) => {
