@@ -25,7 +25,7 @@ router.post("/google", authController.googleLogin);
 // Step 1: redirect browser → Google consent screen
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
 );
 
 // Step 2: Google redirects back here after user grants permission
