@@ -1,26 +1,33 @@
 const { optimizeCoverImage } = require('./imageOptimizer');
 
-const processMedia = (files, body) => {
+const processMedia = async (files, body) => {
   const media = [];
   
   if (files && files['media']) {
     const mainFile = files['media'][0];
-    const mainUrl = `/uploads/${mainFile.filename}`;
-    
+    let mainUrl = `/uploads/${mainFile.filename}`;
+
+    // If main uploaded file is an image, optimize it via Sharp to WebP
+    if (mainFile.mimetype.startsWith('image/')) {
+      console.log(`[MediaService] Optimizing main image file: ${mainFile.originalname}`);
+      mainUrl = await optimizeCoverImage(mainFile.filename);
+    }
+
     let thumbnailUrl = undefined;
     if (files['videoThumbnail']) {
       const thumbFile = files['videoThumbnail'][0];
-      thumbnailUrl = `/uploads/${thumbFile.filename}`;
+      console.log(`[MediaService] Optimizing video thumbnail: ${thumbFile.originalname}`);
+      thumbnailUrl = await optimizeCoverImage(thumbFile.filename);
     }
 
     const type = body.mediaType || (mainFile.mimetype.startsWith('video/') ? 'video' : 'image');
 
-    console.log(`[MediaService] Processing uploaded file: ${mainFile.originalname} as ${type}`);
+    console.log(`[MediaService] Processed uploaded file: ${mainFile.originalname} as ${type} -> URL: ${mainUrl}`);
 
     media.push({
       type: type,
       url: mainUrl,
-      public_id: mainFile.filename, // Keep track of the filename for future reference/deletion
+      public_id: mainFile.filename,
       resource_type: mainFile.mimetype.startsWith('video/') ? 'video' : 'image',
       ...(thumbnailUrl && { thumbnailUrl }),
       isFeatured: true,
@@ -40,7 +47,8 @@ const processMedia = (files, body) => {
     let thumbnailUrl = undefined;
     if (files && files['videoThumbnail']) {
       const thumbFile = files['videoThumbnail'][0];
-      thumbnailUrl = `/uploads/${thumbFile.filename}`;
+      console.log(`[MediaService] Optimizing video thumbnail for embed: ${thumbFile.originalname}`);
+      thumbnailUrl = await optimizeCoverImage(thumbFile.filename);
     }
     
     media.push({

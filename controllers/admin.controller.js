@@ -15,14 +15,15 @@ exports.getCategories = async (req, res) => {
   }
 };
 
+const { optimizeCoverImage } = require('../services/imageOptimizer');
+
 exports.createCategory = async (req, res) => {
   try {
     const { name, slug, description } = req.body;
-    const fileToUrl = (file) => {
-      if (!file) return undefined;
-      return `/uploads/${file.filename}`;
-    };
-    const coverImage = fileToUrl(req.file);
+    let coverImage = undefined;
+    if (req.file) {
+      coverImage = await optimizeCoverImage(req.file.filename);
+    }
     const category = new Category({ name, slug, description, ...(coverImage && { coverImage }) });
     await category.save();
     res.status(201).json({ success: true, data: category });
@@ -36,7 +37,7 @@ exports.updateCategory = async (req, res) => {
     const { name, slug, description } = req.body;
     const update = { name, slug, description };
     if (req.file) {
-      update.coverImage = `/uploads/${req.file.filename}`;
+      update.coverImage = await optimizeCoverImage(req.file.filename);
     }
     const category = await Category.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
@@ -123,7 +124,7 @@ exports.createProject = async (req, res) => {
       });
     }
 
-    const media = processMedia(req.files, req.body);
+    const media = await processMedia(req.files, req.body);
     const coverImage = await processCoverImage(req.files);
 
     console.log(`[createProject] Cover image optimized: ${coverImage}`);
@@ -159,12 +160,12 @@ exports.updateProject = async (req, res) => {
     };
 
     if (req.files && (req.files['media'] || req.files['videoThumbnail']) || req.body.embedUrl) {
-      const newMedia = processMedia(req.files, req.body);
+      const newMedia = await processMedia(req.files, req.body);
       if (newMedia.length > 0) {
         update.media = newMedia;
       } else if (req.files && req.files['videoThumbnail']) {
         const thumbFile = req.files['videoThumbnail'][0];
-        update['media.0.thumbnailUrl'] = `/uploads/${thumbFile.filename}`;
+        update['media.0.thumbnailUrl'] = await optimizeCoverImage(thumbFile.filename);
       }
     }
 
