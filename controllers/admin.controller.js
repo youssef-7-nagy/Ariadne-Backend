@@ -121,8 +121,20 @@ exports.createProject = async (req, res) => {
   try {
     const { title, slug, categoryId, description, date, clientName, tags, externalLink, mediaType } = req.body;
 
+    // ── Diagnostic logging (visible in Hostinger Node.js logs) ──────────────
+    console.log(`[createProject] Received files:`, JSON.stringify(
+      req.files ? Object.fromEntries(Object.entries(req.files).map(([k, v]) => [
+        k, v.map(f => ({ name: f.originalname, size: f.size, mime: f.mimetype, path: f.path, filename: f.filename }))
+      ])) : null
+    ));
+    console.log(`[createProject] Body fields: title=${title}, slug=${slug}, categoryId=${categoryId}`);
+    // ────────────────────────────────────────────────────────────────────────
+
     const media = processMedia(req.files, req.body);
     const coverImage = processCoverImage(req.files);
+
+    console.log(`[createProject] Resolved coverImage URL: ${coverImage || 'none'}`);
+    console.log(`[createProject] Resolved media:`, JSON.stringify(media));
 
     const project = new Project({
       title, slug,
@@ -144,6 +156,14 @@ exports.createProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const { title, slug, categoryId, description, date, clientName, tags, externalLink, mediaType } = req.body;
+
+    // ── Diagnostic logging ──────────────────────────────────────────────────
+    console.log(`[updateProject] id=${req.params.id} | files:`, JSON.stringify(
+      req.files ? Object.fromEntries(Object.entries(req.files).map(([k, v]) => [
+        k, v.map(f => ({ name: f.originalname, size: f.size, path: f.path, filename: f.filename }))
+      ])) : null
+    ));
+    // ────────────────────────────────────────────────────────────────────────
 
     const update = {
       title, slug,

@@ -15,10 +15,19 @@ const { databaseConnection } = require("./db/db.config");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Ensure uploads directory exists
+// Ensure uploads directory exists and is writable
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+try {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  // Write-permission check
+  const testFile = path.join(uploadDir, '.write_test');
+  fs.writeFileSync(testFile, 'ok');
+  fs.unlinkSync(testFile);
+  console.log(`[OK] Uploads directory is writable: ${uploadDir}`);
+} catch (err) {
+  console.error(`[ERROR] Cannot write to uploads directory: ${uploadDir}`);
+  console.error(`[ERROR] Reason: ${err.message}`);
+  console.error('[ERROR] On Hostinger: ensure the Node.js process has write permission to this folder.');
 }
 
 app.use(express.json({ limit: '50mb' }));
