@@ -1,14 +1,21 @@
 const cloudinary = require('cloudinary').v2;
 
-const isConfigured = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+const isConfigured = !!(
+  process.env.CLOUDINARY_URL || 
+  (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+);
 
 if (isConfigured) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
-  console.log('[OK] Cloudinary initialized with cloud_name:', process.env.CLOUDINARY_CLOUD_NAME);
+  // If CLOUDINARY_URL is present, the SDK picks it up automatically.
+  // Otherwise, we configure it manually with the 3 variables.
+  if (!process.env.CLOUDINARY_URL) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+  }
+  console.log('[OK] Cloudinary initialized. (URL mode:', !!process.env.CLOUDINARY_URL, ')');
 } else {
   console.warn('[WARN] Cloudinary keys missing. Will fallback to local upload storage.');
 }
