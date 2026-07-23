@@ -1,17 +1,14 @@
-const { isConfigured, extractCloudinaryPublicId } = require('./cloudinary.service');
-
 const processMedia = (files, body) => {
   const media = [];
   
   if (files && files['media']) {
     const mainFile = files['media'][0];
-    const isCloudinary = !!mainFile.path.match(/^https?:\/\//);
-    const mainUrl = isCloudinary ? mainFile.path : `/uploads/${mainFile.filename}`;
+    const mainUrl = `/uploads/${mainFile.filename}`;
     
     let thumbnailUrl = undefined;
     if (files['videoThumbnail']) {
       const thumbFile = files['videoThumbnail'][0];
-      thumbnailUrl = thumbFile.path.match(/^https?:\/\//) ? thumbFile.path : `/uploads/${thumbFile.filename}`;
+      thumbnailUrl = `/uploads/${thumbFile.filename}`;
     }
 
     const type = body.mediaType || (mainFile.mimetype.startsWith('video/') ? 'video' : 'image');
@@ -21,7 +18,7 @@ const processMedia = (files, body) => {
     media.push({
       type: type,
       url: mainUrl,
-      public_id: isCloudinary ? (mainFile.filename || extractCloudinaryPublicId(mainUrl)) : undefined,
+      public_id: mainFile.filename, // Keep track of the filename for future reference/deletion
       resource_type: mainFile.mimetype.startsWith('video/') ? 'video' : 'image',
       ...(thumbnailUrl && { thumbnailUrl }),
       isFeatured: true,
@@ -41,7 +38,7 @@ const processMedia = (files, body) => {
     let thumbnailUrl = undefined;
     if (files && files['videoThumbnail']) {
       const thumbFile = files['videoThumbnail'][0];
-      thumbnailUrl = thumbFile.path.match(/^https?:\/\//) ? thumbFile.path : `/uploads/${thumbFile.filename}`;
+      thumbnailUrl = `/uploads/${thumbFile.filename}`;
     }
     
     media.push({
@@ -59,7 +56,7 @@ const processMedia = (files, body) => {
 const processCoverImage = (files) => {
   if (files && files['coverImage']) {
     const coverFile = files['coverImage'][0];
-    const url = coverFile.path.match(/^https?:\/\//) ? coverFile.path : `/uploads/${coverFile.filename}`;
+    const url = `/uploads/${coverFile.filename}`;
     console.log(`[MediaService] Processing cover image: ${url}`);
     return url;
   }
@@ -70,3 +67,4 @@ module.exports = {
   processMedia,
   processCoverImage
 };
+

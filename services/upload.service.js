@@ -1,37 +1,14 @@
 const multer = require('multer');
 const path = require('path');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const { cloudinary, isConfigured } = require('./cloudinary.service');
 
-let storage;
-
-if (isConfigured) {
-  storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: async (req, file) => {
-      let resource_type = 'auto';
-      if (file.mimetype.startsWith('video/')) {
-          resource_type = 'video';
-      } else if (file.mimetype.startsWith('image/')) {
-          resource_type = 'image';
-      }
-      return {
-        folder: 'ariadne_portfolio',
-        resource_type: resource_type,
-      };
-    },
-  });
-  console.log('[OK] Multer configured with CloudinaryStorage.');
-} else {
-  storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
-    filename: (req, file, cb) => {
-      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `${unique}${path.extname(file.originalname)}`);
-    }
-  });
-  console.log('[WARN] Multer configured with Local diskStorage.');
-}
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
+  }
+});
+console.log('[OK] Multer configured with Local diskStorage.');
 
 const uploadService = multer({
   storage,
@@ -49,3 +26,4 @@ const uploadService = multer({
 });
 
 module.exports = uploadService;
+
