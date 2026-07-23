@@ -32,8 +32,8 @@ const optimizeCoverImage = async (originalFilename) => {
 
   try {
     await sharp(inputPath)
-      .resize({ width: 1200, withoutEnlargement: true })
-      .webp({ quality: 80 })
+      .resize({ width: 1200, withoutEnlargement: true, fastShrinkOnLoad: true })
+      .webp({ quality: 80, effort: 4 })
       .toFile(outputPath);
 
     const originalStats = fs.statSync(inputPath);

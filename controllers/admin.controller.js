@@ -124,8 +124,10 @@ exports.createProject = async (req, res) => {
       });
     }
 
-    const media = await processMedia(req.files, req.body);
-    const coverImage = await processCoverImage(req.files);
+    const [media, coverImage] = await Promise.all([
+      processMedia(req.files, req.body),
+      processCoverImage(req.files)
+    ]);
 
     console.log(`[createProject] Cover image optimized: ${coverImage}`);
 
