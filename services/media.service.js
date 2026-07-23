@@ -1,3 +1,5 @@
+const { optimizeCoverImage } = require('./imageOptimizer');
+
 const processMedia = (files, body) => {
   const media = [];
   
@@ -53,12 +55,17 @@ const processMedia = (files, body) => {
   return media;
 };
 
-const processCoverImage = (files) => {
+/**
+ * Processes cover image — optimizes to WebP via Sharp.
+ * Returns the optimized URL path (e.g., `/uploads/opt_1234.webp`).
+ */
+const processCoverImage = async (files) => {
   if (files && files['coverImage']) {
     const coverFile = files['coverImage'][0];
-    const url = `/uploads/${coverFile.filename}`;
-    console.log(`[MediaService] Processing cover image: ${url}`);
-    return url;
+    console.log(`[MediaService] Processing cover image: ${coverFile.originalname}`);
+    const optimizedUrl = await optimizeCoverImage(coverFile.filename);
+    console.log(`[MediaService] Optimized cover image URL: ${optimizedUrl}`);
+    return optimizedUrl;
   }
   return undefined;
 };
@@ -67,4 +74,3 @@ module.exports = {
   processMedia,
   processCoverImage
 };
-

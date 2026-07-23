@@ -14,7 +14,7 @@ const projectSchema = new mongoose.Schema({
   clientName: { type: String },
   tags: [{ type: String, index: true }],
   externalLink: { type: String }, // YouTube or any external URL
-  coverImage: { type: String }, // Used as the coverage photo
+  coverImage: { type: String, required: [true, 'Cover image is required'] },
   
   media: [{ 
     type: { type: String, enum: ['image', 'video', 'embed'], required: true },

@@ -12,7 +12,8 @@
     "nodemailer": "^7.0.13",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "resend": "^6.12.3"
+    "resend": "^6.12.3",
+    "sharp": "^0.35.3"
   },
   "name": "back_express",
   "version": "1.0.0",
