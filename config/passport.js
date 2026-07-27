@@ -70,13 +70,35 @@ passport.deserializeUser(async (id, done) => {
 
 // ─── Google Strategy ──────────────────────────────────────────────────────────
 
+// Auto-detect the correct callback URL for the current environment.
+// In production: derive from CLIENT_URL (e.g. https://ariadneg.com/api/auth/google/callback)
+// In development: use GOOGLE_CALLBACK_URL or fall back to localhost.
+function resolveGoogleCallbackURL() {
+  // Explicit env var always wins
+  if (process.env.GOOGLE_CALLBACK_URL && process.env.NODE_ENV !== "production") {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+
+  // In production, auto-derive from CLIENT_URL so you never need to comment/uncomment .env lines
+  if (process.env.NODE_ENV === "production" && process.env.CLIENT_URL) {
+    const baseUrl = process.env.CLIENT_URL.split(",")[0].trim();
+    return `${baseUrl}/api/auth/google/callback`;
+  }
+
+  // Fallback for local dev
+  return process.env.GOOGLE_CALLBACK_URL || "http://localhost:8080/api/auth/google/callback";
+}
+
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  const googleCallbackURL = resolveGoogleCallbackURL();
+  console.log(`[Google OAuth] Callback URL: ${googleCallbackURL}`);
+
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+        callbackURL: googleCallbackURL,
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
