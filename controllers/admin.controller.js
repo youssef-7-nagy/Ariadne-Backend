@@ -137,6 +137,7 @@ exports.createProject = async (req, res) => {
       description, date,
       clientName,
       externalLink,
+      mediaType: mediaType || 'video',
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       media,
       coverImage
@@ -158,6 +159,7 @@ exports.updateProject = async (req, res) => {
       description, date,
       clientName,
       externalLink,
+      mediaType: mediaType || 'video',
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
 

@@ -3,6 +3,25 @@ const { optimizeCoverImage } = require('./imageOptimizer');
 const processMedia = async (files, body) => {
   const media = [];
 
+  // ── Gallery Mode: multiple images ─────────────────────────────────────────
+  if (body.mediaType === 'gallery') {
+    const galleryFiles = files && files['media'] ? files['media'] : [];
+    for (let i = 0; i < galleryFiles.length; i++) {
+      const f = galleryFiles[i];
+      console.log(`[MediaService] Optimizing gallery image ${i + 1}/${galleryFiles.length}: ${f.originalname}`);
+      const optimizedUrl = await optimizeCoverImage(f.filename);
+      media.push({
+        type: 'image',
+        url: optimizedUrl,
+        public_id: f.filename,
+        resource_type: 'image',
+        isFeatured: i === 0,
+        order: i
+      });
+    }
+    return media;
+  }
+
   let mainImageOptUrl = undefined;
   let videoThumbOptUrl = undefined;
 

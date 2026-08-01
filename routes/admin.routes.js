@@ -21,9 +21,9 @@ router.delete('/categories/:id', adminController.deleteCategory);
 
 // Projects
 router.get('/projects', adminController.getProjects);
-router.post('/projects', upload.fields([{ name: 'media', maxCount: 1 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.createProject);
+router.post('/projects', upload.fields([{ name: 'media', maxCount: 20 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.createProject);
 router.put('/projects/reorder', adminController.reorderProjects); // before /:id
-router.put('/projects/:id', upload.fields([{ name: 'media', maxCount: 1 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.updateProject);
+router.put('/projects/:id', upload.fields([{ name: 'media', maxCount: 20 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.updateProject);
 router.delete('/projects/:id', adminController.deleteProject);
 
 // Multer error handler – must have 4 params to be treated as an Express error handler
