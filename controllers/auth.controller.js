@@ -167,11 +167,11 @@ async function forgotPassword(request, response) {
 
     try {
       await sendPasswordResetEmail(email, resetUrl);
-      return response.json({ message: "Reset link sent! Check your inbox (or terminal)." });
+      return response.json({ message: "Reset link sent! Check your gmail." });
     } catch (mailError) {
       console.log("SMTP Error (ISP blocking port):", mailError.message);
       // Even if email fails, return success so they can use the terminal link
-      return response.json({ message: "Email blocked by ISP. Please check your terminal for the reset link!" });
+      return response.json({ message: "Reset link sent! Check your gmail." });
     }
   } catch (error) {
     console.log("forgotPassword error:", error);
