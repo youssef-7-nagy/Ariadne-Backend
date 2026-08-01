@@ -4,8 +4,19 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // ─── Resend client (HTTPS-based — never blocked by ISPs) ─────────────────────
-// Get your free API key at: https://resend.com → Dashboard → API Keys
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Helper to resolve an absolute logo URL that email clients can access
+const getLogoUrl = () => {
+  if (process.env.CLIENT_URL) {
+    const urls = process.env.CLIENT_URL.split(',').map(u => u.trim());
+    // Prioritize production HTTPS URL so email clients render it correctly
+    const prodUrl = urls.find(u => u.startsWith('https://'));
+    if (prodUrl) return `${prodUrl}/mylogo.png`;
+    return `${urls[0]}/mylogo.png`;
+  }
+  return 'https://ariadneg.com/mylogo.png';
+};
 
 // Fake transporter with a verify() so index.js startup check still works
 const transporter = {
@@ -24,10 +35,9 @@ const transporter = {
  * @param {string} resetUrl  - The full reset link including token
  */
 const sendPasswordResetEmail = async (toEmail, resetUrl) => {
+  const logoUrl = getLogoUrl();
+
   const { data, error } = await resend.emails.send({
-    // NOTE: On Resend free plan without a verified domain, the from address
-    // must be "onboarding@resend.dev". Once you verify your own domain in
-    // the Resend dashboard, change this to: "Ariadne <noreply@yourdomain.com>"
     from: 'Ariadne <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Reset Your Password — Ariadne',
@@ -38,65 +48,85 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Reset Password</title>
+      <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+          margin: 0;
+          padding: 0;
+          background-color: #f8fafc;
+          font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          -webkit-font-smoothing: antialiased;
+        }
+        table {
+          border-collapse: collapse;
+        }
+        a {
+          text-decoration: none;
+        }
+      </style>
     </head>
-    <body style="margin:0;padding:0;background-color:#f0f4f8;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f4f8;padding:40px 0;">
+    <body>
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 48px 0; width: 100%;">
         <tr>
           <td align="center">
-            <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);">
               
-              <!-- Header -->
+              <!-- Premium Dark Header -->
               <tr>
-                <td style="background:linear-gradient(135deg,#0A2440 0%,#1F75B8 100%);padding:36px 40px;text-align:center;">
-                  <div style="font-size:32px;margin-bottom:8px;">📸</div>
-                  <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-0.5px;">Ariadne</h1>
-                  <p style="margin:4px 0 0;color:rgba(255,255,255,0.75);font-size:13px;letter-spacing:1px;text-transform:uppercase;">Visual Storytelling</p>
+                <td style="background: linear-gradient(135deg, #0f172a 0%, #020617 100%); padding: 48px 40px; text-align: center; border-bottom: 1px solid #1e293b;">
+                  <img src="${logoUrl}" alt="Ariadne Logo" style="height: 48px; width: auto; display: block; margin: 0 auto 16px auto;" />
+                  <p style="margin: 0; color: #94a3b8; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;">Visual Storytelling</p>
                 </td>
               </tr>
 
-              <!-- Body -->
+              <!-- Email Content Body -->
               <tr>
-                <td style="padding:40px 40px 30px;">
-                  <h2 style="margin:0 0 12px;color:#0A2440;font-size:22px;font-weight:700;">Password Reset Request</h2>
-                  <p style="margin:0 0 24px;color:#4a5568;font-size:15px;line-height:1.6;">
+                <td style="padding: 48px 40px 32px 40px;">
+                  <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.25;">Password Reset Request</h2>
+                  <p style="margin: 0 0 28px 0; color: #475569; font-size: 15px; line-height: 1.6; font-weight: 400;">
                     We received a request to reset the password for your Ariadne account. Click the button below to choose a new password. This link is valid for <strong>1 hour</strong>.
                   </p>
 
-                  <!-- CTA Button -->
-                  <table width="100%" cellpadding="0" cellspacing="0">
+                  <!-- Reset Button Section -->
+                  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 32px;">
                     <tr>
-                      <td align="center" style="padding:10px 0 28px;">
+                      <td align="center">
                         <a href="${resetUrl}"
-                          style="display:inline-block;background:linear-gradient(135deg,#1F75B8,#0A2440);color:#ffffff;text-decoration:none;padding:15px 40px;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 14px rgba(31,117,184,0.4);">
-                          🔑 Reset My Password
+                          style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 16px 40px; border-radius: 8px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #1e293b; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); transition: background-color 0.2s;">
+                          Reset My Password
                         </a>
                       </td>
                     </tr>
                   </table>
 
                   <!-- Divider -->
-                  <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 24px;" />
+                  <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 0 0 28px 0;" />
 
-                  <p style="margin:0 0 8px;color:#718096;font-size:13px;line-height:1.6;">
+                  <!-- Help & Verification Link Fallback -->
+                  <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; line-height: 1.5;">
                     If the button doesn't work, copy and paste this link into your browser:
                   </p>
-                  <p style="margin:0 0 24px;word-break:break-all;">
-                    <a href="${resetUrl}" style="color:#1F75B8;font-size:12px;text-decoration:underline;">${resetUrl}</a>
+                  <p style="margin: 0 0 28px 0; word-break: break-all;">
+                    <a href="${resetUrl}" style="color: #6366f1; font-size: 13px; text-decoration: underline; font-weight: 500;">${resetUrl}</a>
                   </p>
 
-                  <div style="background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;padding:16px 20px;">
-                    <p style="margin:0;color:#9a3412;font-size:13px;line-height:1.5;">
-                      ⚠️ <strong>Didn't request this?</strong> If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.
+                  <!-- Safety Notice Box -->
+                  <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 18px 20px;">
+                    <p style="margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;">
+                      🔒 <strong>Security Note:</strong> If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
                     </p>
                   </div>
                 </td>
               </tr>
 
-              <!-- Footer -->
+              <!-- Footer Section -->
               <tr>
-                <td style="background:#f8fafc;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-                  <p style="margin:0;color:#a0aec0;font-size:12px;">
-                    © ${new Date().getFullYear()} Ariadne Visual Storytelling · Cairo, Egypt
+                <td style="background-color: #f8fafc; padding: 24px 40px; text-align: center; border-top: 1px solid #f1f5f9;">
+                  <p style="margin: 0; color: #94a3b8; font-size: 12px; font-weight: 500;">
+                    © ${new Date().getFullYear()} Ariadne · Visual Storytelling
+                  </p>
+                  <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 11px;">
+                    Zamalek, Cairo, Egypt
                   </p>
                 </td>
               </tr>
