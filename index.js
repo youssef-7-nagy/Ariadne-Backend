@@ -24,9 +24,23 @@ if (!fs.existsSync(uploadDir)) {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-const allowedOrigins = process.env.CLIENT_URL
+const rawOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(url => url.trim())
   : ['http://localhost:5173'];
+
+// Auto-expand: for every origin, also allow its www. variant (and vice versa)
+const allowedOrigins = [...new Set(rawOrigins.flatMap(url => {
+  try {
+    const u = new URL(url);
+    const variants = [url];
+    if (u.hostname.startsWith('www.')) {
+      variants.push(url.replace('://www.', '://'));
+    } else {
+      variants.push(url.replace('://', '://www.'));
+    }
+    return variants;
+  } catch (e) { return [url]; }
+}))];
 
 console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
 
