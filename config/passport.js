@@ -79,10 +79,12 @@ function resolveGoogleCallbackURL() {
     return process.env.GOOGLE_CALLBACK_URL;
   }
 
-  // In production, auto-derive from CLIENT_URL so you never need to comment/uncomment .env lines
+  // In production, derive from the correct production CLIENT_URL entry
   if (process.env.NODE_ENV === "production" && process.env.CLIENT_URL) {
-    const baseUrl = process.env.CLIENT_URL.split(",")[0].trim();
-    return `${baseUrl}/api/auth/google/callback`;
+    const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
+    // Find the live production URL (usually starting with https://)
+    const prodUrl = urls.find(u => u.startsWith("https://")) || urls[0];
+    return `${prodUrl}/api/auth/google/callback`;
   }
 
   // Fallback for local dev
