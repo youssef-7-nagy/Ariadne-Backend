@@ -14,6 +14,23 @@ const { sendPasswordResetEmail } = require("../utils/mailer");
 
 dotenv.config();
 
+const getClientUrl = (req) => {
+  if (process.env.CLIENT_URL) {
+    const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
+    if (process.env.NODE_ENV === "production") {
+      const prodUrl = urls.find(u => u.startsWith("https://"));
+      if (prodUrl) return prodUrl;
+    }
+    const origin = req?.headers?.origin || req?.headers?.referer;
+    if (origin) {
+      const matched = urls.find(u => origin.startsWith(u));
+      if (matched) return matched;
+    }
+    return urls[0];
+  }
+  return "http://localhost:5173";
+};
+
 const generateToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -139,7 +156,8 @@ async function forgotPassword(request, response) {
     user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour from now
     await user.save();
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
+    const clientUrl = getClientUrl(request);
+    const resetUrl = `${clientUrl}/reset-password?token=${token}`;
     
     // IMPORTANT: Print the URL to the terminal so the user can click it locally!
     console.log("\n=======================================================");
@@ -292,18 +310,14 @@ async function oauthCallback(request, response) {
   try {
     const user = request.user; // set by Passport
     if (!user) {
-      const clientUrl = process.env.CLIENT_URL
-        ? process.env.CLIENT_URL.split(",")[0].trim()
-        : "http://localhost:5173";
+      const clientUrl = getClientUrl(request);
       return response.redirect(`${clientUrl}/oauth/callback?error=authentication_failed`);
     }
 
     const token = generateToken(user);
     const userPayload = buildUserPayload(user);
 
-    const clientUrl = process.env.CLIENT_URL
-      ? process.env.CLIENT_URL.split(",")[0].trim()
-      : "http://localhost:5173";
+    const clientUrl = getClientUrl(request);
 
     const params = new URLSearchParams({
       token,
@@ -313,9 +327,7 @@ async function oauthCallback(request, response) {
     return response.redirect(`${clientUrl}/oauth/callback?${params.toString()}`);
   } catch (err) {
     console.error("oauthCallback error:", err);
-    const clientUrl = process.env.CLIENT_URL
-      ? process.env.CLIENT_URL.split(",")[0].trim()
-      : "http://localhost:5173";
+    const clientUrl = getClientUrl(request);
     return response.redirect(`${clientUrl}/oauth/callback?error=server_error`);
   }
 }

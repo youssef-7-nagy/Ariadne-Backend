@@ -33,18 +33,27 @@ router.get(
   "/google/callback",
   (req, res, next) => {
     passport.authenticate("google", { session: false }, (err, user, info) => {
+      // Helper to match correct URL
+      const getRedirectClientUrl = () => {
+        if (process.env.CLIENT_URL) {
+          const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
+          if (process.env.NODE_ENV === "production") {
+            const prodUrl = urls.find(u => u.startsWith("https://"));
+            if (prodUrl) return prodUrl;
+          }
+          return urls[0];
+        }
+        return "http://localhost:5173";
+      };
+
+      const clientUrl = getRedirectClientUrl();
+
       if (err) {
         console.error("[Google OAuth] Strategy error:", err.message || err);
-        const clientUrl = process.env.CLIENT_URL
-          ? process.env.CLIENT_URL.split(",")[0].trim()
-          : "http://localhost:5173";
         return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
       }
       if (!user) {
         console.error("[Google OAuth] Authentication failed — no user returned.", info);
-        const clientUrl = process.env.CLIENT_URL
-          ? process.env.CLIENT_URL.split(",")[0].trim()
-          : "http://localhost:5173";
         return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
       }
       // Attach user to request so oauthCallback can access it
