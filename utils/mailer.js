@@ -36,11 +36,12 @@ const transporter = {
  */
 const sendPasswordResetEmail = async (toEmail, resetUrl) => {
   const logoUrl = getLogoUrl();
+  const fromAddress = process.env.RESEND_FROM_EMAIL || 'Ariadne <noreply@ariadneg.com>';
 
   const { data, error } = await resend.emails.send({
-    from: 'Ariadne <onboarding@resend.dev>',
+    from: fromAddress,
     to: toEmail,
-    subject: 'Reset Your Password — Ariadne',
+    subject: 'Reset your password',
     html: `
     <!DOCTYPE html>
     <html lang="en">
