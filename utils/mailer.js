@@ -100,16 +100,7 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
                     </tr>
                   </table>
 
-                  <!-- Divider -->
-                  <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 0 0 28px 0;" />
 
-                  <!-- Help & Verification Link Fallback -->
-                  <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; line-height: 1.5;">
-                    If the button doesn't work, copy and paste this link into your browser:
-                  </p>
-                  <p style="margin: 0 0 28px 0; word-break: break-all;">
-                    <a href="${resetUrl}" style="color: #6366f1; font-size: 13px; text-decoration: underline; font-weight: 500;">${resetUrl}</a>
-                  </p>
 
                   <!-- Safety Notice Box -->
                   <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 18px 20px;">
