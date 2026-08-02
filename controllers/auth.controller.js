@@ -221,10 +221,14 @@ async function getAllUsers(request, response) {
 
 async function updateUserRole(request, response) {
   try {
+    if (request.user.role !== "superadmin") {
+      return response.status(403).json({ message: "Only a Super Admin can change user roles" });
+    }
+
     const { id } = request.params;
     const { role } = request.body;
     
-    if (!["user", "admin"].includes(role)) {
+    if (!["user", "admin", "superadmin"].includes(role)) {
       return response.status(400).json({ message: "Invalid role" });
     }
 
@@ -239,7 +243,7 @@ async function updateUserRole(request, response) {
     return response.json({ message: "Role updated successfully", data: { id: user._id, role: user.role } });
   } catch (error) {
     console.log(error);
-    return response.status(500).json({ message: "internal server error.." });
+    return response.status(500).json({ message: "Internal server error" });
   }
 }
 

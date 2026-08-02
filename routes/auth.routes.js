@@ -4,7 +4,7 @@ const passport = require("passport");
 
 const authController = require("../controllers/auth.controller.js");
 const { authMiddleWare } = require("../middlewares/auth.middleware.js");
-const { adminOnly } = require("../middlewares/admin.middleware.js");
+const { adminOnly, superAdminOnly } = require("../middlewares/admin.middleware.js");
 
 // ─── Email / Password routes (unchanged) ─────────────────────────────────────
 router.get("/me", authMiddleWare, authController.validateMe);
@@ -16,7 +16,7 @@ router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
 
 router.get("/users", authMiddleWare, adminOnly, authController.getAllUsers);
-router.put("/users/:id/role", authMiddleWare, adminOnly, authController.updateUserRole);
+router.put("/users/:id/role", authMiddleWare, superAdminOnly, authController.updateUserRole);
 
 // Legacy route kept for backwards-compatibility during transition
 router.post("/google", authController.googleLogin);

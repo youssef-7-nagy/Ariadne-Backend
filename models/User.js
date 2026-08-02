@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     password: { type: String, required: true },
     gender: { type: String, enum: ["male", "female"], default: undefined },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    role: { type: String, enum: ["user", "admin", "superadmin"], default: "user" },
     resetPasswordToken: { type: String, unique: true, sparse: true },
     resetPasswordExpires: { type: Date },
     // ─── OAuth provider IDs ───────────────────────────────────────────────────
