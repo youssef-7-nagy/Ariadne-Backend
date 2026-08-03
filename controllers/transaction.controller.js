@@ -3,7 +3,13 @@ const Transaction = require("../models/Transaction");
 exports.createTransaction = async (req, res) => {
   try {
     const { clientName, serviceName, amount, paymentMethod } = req.body;
-    const newTransaction = new Transaction({ clientName, serviceName, amount, paymentMethod });
+    const normalizedMethod = String(paymentMethod || 'cash').toLowerCase().trim();
+    const newTransaction = new Transaction({ 
+      clientName, 
+      serviceName, 
+      amount: Number(amount), 
+      paymentMethod: normalizedMethod 
+    });
     await newTransaction.save();
     res.status(201).json({ success: true, data: newTransaction });
   } catch (error) {
@@ -57,7 +63,11 @@ exports.deleteTransaction = async (req, res) => {
 exports.updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Transaction.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const updateData = { ...req.body };
+    if (updateData.paymentMethod) {
+      updateData.paymentMethod = String(updateData.paymentMethod).toLowerCase().trim();
+    }
+    const updated = await Transaction.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!updated) {
       return res.status(404).json({ success: false, message: "Transaction not found" });
     }
@@ -67,3 +77,4 @@ exports.updateTransaction = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
