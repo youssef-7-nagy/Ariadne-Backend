@@ -5,11 +5,12 @@ const fs = require('fs');
 const UPLOAD_DIR = path.join(__dirname, '../uploads');
 
 /**
- * Optimizes an uploaded image for Ultra-High Quality photography display:
- * - Supports up to 4K Ultra-HD resolution (3840px max width/height)
- * - Retains maximum sharpness and color fidelity (quality: 98, smartSubsample: true)
+ * Optimizes an uploaded image for Maximum 8K Ultra-HD Photography Display:
+ * - Supports full 8K Ultra-HD resolution (7680px max width / 4320px max height)
+ * - Retains 100% maximum sharpness and full 4:4:4 color precision (quality: 100)
+ * - Disables input pixel limits to process massive 8K+ camera exports smoothly
  * - Saves as `opt_<original-name>.webp` alongside the original
- * - Falls back to the raw high-res original if any processing error occurs
+ * - Falls back to raw original high-res file if processing error occurs
  */
 const optimizeCoverImage = async (originalFilename) => {
   if (!originalFilename) return null;
@@ -29,18 +30,18 @@ const optimizeCoverImage = async (originalFilename) => {
   const outputPath = path.join(UPLOAD_DIR, optimizedFilename);
 
   try {
-    // Ultra High Quality 4K Sharp pipeline
-    await sharp(inputPath)
+    // Ultra High Quality 8K Sharp pipeline
+    await sharp(inputPath, { limitInputPixels: false })
       .resize({
-        width: 3840,
-        height: 2160,
+        width: 7680,
+        height: 4320,
         fit: 'inside',
         withoutEnlargement: true
       })
       .webp({
-        quality: 98,
+        quality: 100,
         effort: 6,
-        smartSubsample: true,
+        smartSubsample: false, // Preserves 4:4:4 full color fidelity
         reductionEffort: 6
       })
       .toFile(outputPath);
@@ -49,16 +50,17 @@ const optimizeCoverImage = async (originalFilename) => {
     const optimizedStats = fs.statSync(outputPath);
 
     console.log(
-      `[ImageOptimizer] 4K Ultra-HD Processed: ${originalFilename} (${(originalStats.size / 1024).toFixed(0)}KB)` +
-      ` → ${optimizedFilename} (${(optimizedStats.size / 1024).toFixed(0)}KB) @ Quality 98`
+      `[ImageOptimizer] 8K Ultra-HD Processed: ${originalFilename} (${(originalStats.size / 1024).toFixed(0)}KB)` +
+      ` → ${optimizedFilename} (${(optimizedStats.size / 1024).toFixed(0)}KB) @ 8K Quality 100`
     );
 
     return `/uploads/${optimizedFilename}`;
   } catch (err) {
-    console.error(`[ImageOptimizer] Warning: Could not process ${originalFilename}, falling back to high-res raw original: ${err.message}`);
+    console.error(`[ImageOptimizer] Warning: Could not process ${originalFilename}, falling back to 8K raw original: ${err.message}`);
     // Fallback directly to raw original image file
     return `/uploads/${originalFilename}`;
   }
 };
 
 module.exports = { optimizeCoverImage };
+
