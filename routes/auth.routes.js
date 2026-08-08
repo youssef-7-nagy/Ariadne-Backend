@@ -33,15 +33,19 @@ router.get(
   "/google/callback",
   (req, res, next) => {
     passport.authenticate("google", { session: false }, (err, user, info) => {
-      // Helper to match correct URL
       const getRedirectClientUrl = () => {
+        let reqOrigin = req?.headers?.origin;
+        if (!reqOrigin && req?.headers?.referer) {
+          try { reqOrigin = new URL(req.headers.referer).origin; } catch (e) {}
+        }
+        if (reqOrigin && !reqOrigin.includes("localhost") && !reqOrigin.includes("127.0.0.1")) {
+          return reqOrigin.replace(/\/$/, "");
+        }
         if (process.env.CLIENT_URL) {
           const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
-          if (process.env.NODE_ENV === "production") {
-            const prodUrl = urls.find(u => u.startsWith("https://"));
-            if (prodUrl) return prodUrl;
-          }
-          return urls[0];
+          const prodUrl = urls.find(u => u.startsWith("https://"));
+          if (prodUrl) return prodUrl.replace(/\/$/, "");
+          return urls[0].replace(/\/$/, "");
         }
         return "http://localhost:5173";
       };

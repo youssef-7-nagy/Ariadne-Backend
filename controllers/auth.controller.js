@@ -15,19 +15,29 @@ const { sendPasswordResetEmail } = require("../utils/mailer");
 dotenv.config();
 
 const getClientUrl = (req) => {
-  if (process.env.CLIENT_URL) {
-    const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
-    if (process.env.NODE_ENV === "production") {
-      const prodUrl = urls.find(u => u.startsWith("https://"));
-      if (prodUrl) return prodUrl;
+  // 1. Try to extract origin dynamically from request headers (works for live site on Hostinger)
+  let reqOrigin = req?.headers?.origin;
+  if (!reqOrigin && req?.headers?.referer) {
+    try {
+      reqOrigin = new URL(req.headers.referer).origin;
+    } catch (e) {
+      // Ignore invalid URL
     }
-    const origin = req?.headers?.origin || req?.headers?.referer;
-    if (origin) {
-      const matched = urls.find(u => origin.startsWith(u));
-      if (matched) return matched;
-    }
-    return urls[0];
   }
+
+  if (reqOrigin && !reqOrigin.includes("localhost") && !reqOrigin.includes("127.0.0.1")) {
+    return reqOrigin.replace(/\/$/, "");
+  }
+
+  // 2. Fall back to process.env.CLIENT_URL if defined
+  if (process.env.CLIENT_URL) {
+    const urls = process.env.CLIENT_URL.split(",").map((u) => u.trim());
+    const prodUrl = urls.find((u) => u.startsWith("https://"));
+    if (prodUrl) return prodUrl.replace(/\/$/, "");
+    return urls[0].replace(/\/$/, "");
+  }
+
+  // 3. Local default
   return "http://localhost:5173";
 };
 
