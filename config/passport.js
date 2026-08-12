@@ -74,19 +74,26 @@ passport.deserializeUser(async (id, done) => {
 // In production: derive from CLIENT_URL (e.g. https://ariadneg.com/api/auth/google/callback)
 // In development: use GOOGLE_CALLBACK_URL or fall back to localhost.
 function resolveGoogleCallbackURL() {
-  // 1. If explicitly provided a production callback URL starting with https://, always use it
-  if (process.env.GOOGLE_CALLBACK_URL && process.env.GOOGLE_CALLBACK_URL.startsWith("https://")) {
-    return process.env.GOOGLE_CALLBACK_URL;
+  const isProd = process.env.NODE_ENV === "production";
+
+  // 1. In production, use HTTPS production callback URL
+  if (isProd) {
+    if (process.env.GOOGLE_CALLBACK_URL && process.env.GOOGLE_CALLBACK_URL.startsWith("https://")) {
+      return process.env.GOOGLE_CALLBACK_URL;
+    }
+    const serverUrl = process.env.SERVER_URL || process.env.BACKEND_URL;
+    if (serverUrl && serverUrl.startsWith("https://")) {
+      return `${serverUrl.replace(/\/$/, "")}/api/auth/google/callback`;
+    }
+    if (process.env.CLIENT_URL) {
+      const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
+      const prodUrl = urls.find(u => u.startsWith("https://")) || urls[0];
+      return `${prodUrl.replace(/\/$/, "")}/api/auth/google/callback`;
+    }
+    return "https://ariadneg.com/api/auth/google/callback";
   }
 
-  // 2. In production, derive from the correct production CLIENT_URL entry
-  if (process.env.NODE_ENV === "production" && process.env.CLIENT_URL) {
-    const urls = process.env.CLIENT_URL.split(",").map(u => u.trim());
-    const prodUrl = urls.find(u => u.startsWith("https://")) || urls[0];
-    return `${prodUrl.replace(/\/$/, "")}/api/auth/google/callback`;
-  }
-
-  // 3. Fallback for local dev
+  // 2. In local development:
   return process.env.GOOGLE_CALLBACK_URL || "http://localhost:8080/api/auth/google/callback";
 }
 

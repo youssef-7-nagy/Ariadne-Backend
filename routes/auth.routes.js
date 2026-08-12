@@ -25,7 +25,14 @@ router.post("/google", authController.googleLogin);
 // Step 1: redirect browser → Google consent screen
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })
+  (req, res, next) => {
+    if (!passport._strategies || !passport._strategies.google) {
+      console.error("[Google OAuth] Error: Google OAuth is not configured on the backend server. Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env.");
+      const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : "http://localhost:5173";
+      return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
+    }
+    passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })(req, res, next);
+  }
 );
 
 // Step 2: Google redirects back here after user grants permission
