@@ -15,29 +15,38 @@ const { sendPasswordResetEmail } = require("../utils/mailer");
 dotenv.config();
 
 const getClientUrl = (req) => {
-  // 1. Try to extract origin dynamically from request headers (works for live site on Hostinger)
+  // Parse allowed frontend origins from env if available
+  const allowedOrigins = process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(",").map((u) => u.trim().replace(/\/$/, ""))
+    : [];
+
   let reqOrigin = req?.headers?.origin;
   if (!reqOrigin && req?.headers?.referer) {
     try {
       reqOrigin = new URL(req.headers.referer).origin;
-    } catch (e) {
-      // Ignore invalid URL
+    } catch (e) {}
+  }
+
+  if (reqOrigin) {
+    reqOrigin = reqOrigin.replace(/\/$/, "");
+    const isThirdParty = /google|facebook|apple|accounts\./i.test(reqOrigin);
+    if (!isThirdParty) {
+      if (allowedOrigins.includes(reqOrigin)) {
+        return reqOrigin;
+      }
+      if (!reqOrigin.includes("localhost") && !reqOrigin.includes("127.0.0.1")) {
+        return reqOrigin;
+      }
     }
   }
 
-  if (reqOrigin && !reqOrigin.includes("localhost") && !reqOrigin.includes("127.0.0.1")) {
-    return reqOrigin.replace(/\/$/, "");
+  // Fall back to production HTTPS URL from CLIENT_URL
+  if (allowedOrigins.length > 0) {
+    const prodUrl = allowedOrigins.find((u) => u.startsWith("https://"));
+    if (prodUrl) return prodUrl;
+    return allowedOrigins[0];
   }
 
-  // 2. Fall back to process.env.CLIENT_URL if defined
-  if (process.env.CLIENT_URL) {
-    const urls = process.env.CLIENT_URL.split(",").map((u) => u.trim());
-    const prodUrl = urls.find((u) => u.startsWith("https://"));
-    if (prodUrl) return prodUrl.replace(/\/$/, "");
-    return urls[0].replace(/\/$/, "");
-  }
-
-  // 3. Local default
   return "http://localhost:5173";
 };
 
@@ -357,4 +366,5 @@ module.exports = {
   updateMyGender,
   googleLogin,
   oauthCallback,
+  getClientUrl,
 };
