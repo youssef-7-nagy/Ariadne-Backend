@@ -39,21 +39,39 @@ router.get(
 router.get(
   "/google/callback",
   (req, res, next) => {
-    passport.authenticate("google", { session: false }, (err, user, info) => {
-      const clientUrl = authController.getClientUrl(req);
+    try {
+      if (!passport._strategies || !passport._strategies.google) {
+        console.error("[Google OAuth] Error: Google OAuth strategy is not registered on backend.");
+        const clientUrl = authController.getClientUrl(req);
+        return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
+      }
 
-      if (err) {
-        console.error("[Google OAuth] Strategy error:", err.message || err);
-        return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
-      }
-      if (!user) {
-        console.error("[Google OAuth] Authentication failed — no user returned.", info);
-        return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
-      }
-      // Attach user to request so oauthCallback can access it
-      req.user = user;
-      return authController.oauthCallback(req, res, next);
-    })(req, res, next);
+      passport.authenticate("google", { session: false }, (err, user, info) => {
+        try {
+          const clientUrl = authController.getClientUrl(req);
+
+          if (err) {
+            console.error("[Google OAuth] Strategy error:", err.message || err);
+            return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
+          }
+          if (!user) {
+            console.error("[Google OAuth] Authentication failed — no user returned.", info);
+            return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
+          }
+          // Attach user to request so oauthCallback can access it
+          req.user = user;
+          return authController.oauthCallback(req, res, next);
+        } catch (innerErr) {
+          console.error("[Google OAuth] Callback processing error:", innerErr);
+          const clientUrl = authController.getClientUrl(req);
+          return res.redirect(`${clientUrl}/oauth/callback?error=server_error`);
+        }
+      })(req, res, next);
+    } catch (outerErr) {
+      console.error("[Google OAuth] Callback wrapper error:", outerErr);
+      const clientUrl = authController.getClientUrl(req);
+      return res.redirect(`${clientUrl}/oauth/callback?error=server_error`);
+    }
   }
 );
 
