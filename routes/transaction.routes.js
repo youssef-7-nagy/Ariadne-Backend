@@ -4,9 +4,9 @@ const transactionController = require("../controllers/transaction.controller");
 const { authMiddleWare } = require("../middlewares/auth.middleware");
 const { adminOnly, superAdminOnly } = require("../middlewares/admin.middleware");
 
-// Protect endpoints with super admin authorization
+// Protect endpoints with admin authorization
 router.post("/", authMiddleWare, superAdminOnly, transactionController.createTransaction);
-router.get("/", authMiddleWare, superAdminOnly, transactionController.getTransactions);
+router.get("/", authMiddleWare, adminOnly, transactionController.getTransactions);
 
 // Client route
 router.get("/client/:clientName", authMiddleWare, transactionController.getTransactionsByClient);
