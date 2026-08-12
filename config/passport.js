@@ -90,7 +90,7 @@ function resolveGoogleCallbackURL() {
       const prodUrl = urls.find(u => u.startsWith("https://")) || urls[0];
       return `${prodUrl.replace(/\/$/, "")}/api/auth/google/callback`;
     }
-    return "https://ariadneg.com/api/auth/google/callback";
+    return "https://api.ariadneg.com/api/auth/google/callback";
   }
 
   // 2. In local development:
