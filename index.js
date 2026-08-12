@@ -70,7 +70,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   }
 }));
 
-app.set("trust proxy", 1); // Trust first proxy (necessary for secure cookies behind a proxy/load balancer)
+app.set("trust proxy", true); // Trust proxy headers behind Hostinger/Nginx/Cloudflare
 
 // ─── Session (required by Passport for the OAuth redirect round-trip) ─────────
 app.use(
@@ -79,10 +79,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      // Session only needed for the brief OAuth redirect round-trip
       maxAge: 10 * 60 * 1000, // 10 minutes
-      secure: process.env.NODE_ENV === "production", // true in production (HTTPS), false in dev (localhost)
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // 'none' required for cross-origin cookies
+      secure: false, // Compatible with Hostinger proxy forwarding
+      sameSite: "lax",
     },
   })
 );
