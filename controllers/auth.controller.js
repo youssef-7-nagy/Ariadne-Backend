@@ -85,6 +85,7 @@ const buildUserPayload = (user) => ({
   gender: user.gender || null,
   avatar: user.avatar || "",
   savedCards: user.savedCards || [],
+  provider: user.googleId ? "google" : (user.facebookId ? "facebook" : (user.appleId ? "apple" : "local")),
 });
 
 async function register(request, response) {
