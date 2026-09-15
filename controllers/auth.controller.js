@@ -15,6 +15,20 @@ const { sendPasswordResetEmail } = require("../utils/mailer");
 dotenv.config();
 
 const getClientUrl = (req) => {
+  // 1. Check if OAuth state contains a returnUrl
+  if (req?.query?.state) {
+    try {
+      const parsed = JSON.parse(Buffer.from(req.query.state, "base64").toString("utf-8"));
+      if (parsed?.returnUrl) {
+        return parsed.returnUrl.replace(/\/$/, "");
+      }
+    } catch (e) {
+      if (typeof req.query.state === "string" && (req.query.state.startsWith("http://") || req.query.state.startsWith("https://"))) {
+        return req.query.state.replace(/\/$/, "");
+      }
+    }
+  }
+
   // Parse allowed frontend origins from env if available
   const allowedOrigins = process.env.CLIENT_URL
     ? process.env.CLIENT_URL.split(",").map((u) => u.trim().replace(/\/$/, ""))
@@ -38,6 +52,13 @@ const getClientUrl = (req) => {
         return reqOrigin;
       }
     }
+  }
+
+  // In development, prioritize localhost origin
+  if (process.env.NODE_ENV !== "production") {
+    const localUrl = allowedOrigins.find((u) => u.includes("localhost") || u.includes("127.0.0.1"));
+    if (localUrl) return localUrl;
+    return "http://localhost:5173";
   }
 
   // Fall back to production HTTPS URL from CLIENT_URL

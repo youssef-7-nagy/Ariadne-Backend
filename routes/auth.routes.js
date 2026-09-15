@@ -28,10 +28,24 @@ router.get(
   (req, res, next) => {
     if (!passport._strategies || !passport._strategies.google) {
       console.error("[Google OAuth] Error: Google OAuth is not configured on the backend server. Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in .env.");
-      const clientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : "http://localhost:5173";
+      const clientUrl = authController.getClientUrl(req);
       return res.redirect(`${clientUrl}/oauth/callback?error=google_auth_failed`);
     }
-    passport.authenticate("google", { scope: ["profile", "email"], prompt: "select_account" })(req, res, next);
+
+    let returnUrl = req.query.returnUrl || req.headers.referer;
+    if (returnUrl) {
+      try {
+        returnUrl = new URL(returnUrl).origin;
+      } catch (e) {}
+    }
+
+    const state = returnUrl ? Buffer.from(JSON.stringify({ returnUrl })).toString("base64") : undefined;
+
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      prompt: "select_account",
+      state,
+    })(req, res, next);
   }
 );
 
