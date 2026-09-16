@@ -114,7 +114,7 @@ exports.getProjects = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, mediaType } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType } = req.body;
 
     // ── Mandatory cover image validation ──
     if (!req.files || !req.files['coverImage'] || req.files['coverImage'].length === 0) {
@@ -137,6 +137,7 @@ exports.createProject = async (req, res) => {
       description, date,
       clientName,
       externalLink,
+      youtubeUrl: youtubeUrl || undefined,
       mediaType: mediaType || 'video',
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       media,
@@ -151,7 +152,7 @@ exports.createProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, mediaType } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType } = req.body;
 
     const update = {
       title, slug,
@@ -159,6 +160,7 @@ exports.updateProject = async (req, res) => {
       description, date,
       clientName,
       externalLink,
+      youtubeUrl: youtubeUrl || undefined,
       mediaType: mediaType || 'video',
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
