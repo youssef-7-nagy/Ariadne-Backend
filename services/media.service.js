@@ -1,6 +1,6 @@
 const { optimizeCoverImage } = require('./imageOptimizer');
 
-const processMedia = async (files, body) => {
+const processMedia = async (files, body, coverOptUrl) => {
   const media = [];
 
   // ── Gallery Mode: multiple images ─────────────────────────────────────────
@@ -25,7 +25,7 @@ const processMedia = async (files, body) => {
   let mainImageOptUrl = undefined;
   let videoThumbOptUrl = undefined;
 
-  // Process video thumbnail if uploaded
+  // Process video thumbnail if explicitly uploaded
   if (files && files['videoThumbnail']) {
     const thumbFile = files['videoThumbnail'][0];
     console.log(`[MediaService] Optimizing video thumbnail: ${thumbFile.originalname}`);
@@ -44,6 +44,9 @@ const processMedia = async (files, body) => {
     }
   }
 
+  // Determine effective poster URL: videoThumbnail -> mainImage -> coverImage
+  const effectivePosterUrl = videoThumbOptUrl || mainImageOptUrl || coverOptUrl;
+
   // 1. If embed URL is provided (Bunny.net, YouTube, etc.)
   if (body.embedUrl && body.embedUrl.trim()) {
     let finalEmbedUrl = body.embedUrl.trim();
@@ -54,13 +57,10 @@ const processMedia = async (files, body) => {
 
     console.log(`[MediaService] Processing embed URL: ${finalEmbedUrl}`);
 
-    // Poster priority for embed: explicit videoThumbnail -> main uploaded image
-    const posterUrl = videoThumbOptUrl || mainImageOptUrl;
-
     media.push({
       type: 'embed',
       url: finalEmbedUrl,
-      ...(posterUrl && { thumbnailUrl: posterUrl }),
+      ...(effectivePosterUrl && { thumbnailUrl: effectivePosterUrl }),
       isFeatured: true,
       order: 0
     });
@@ -82,14 +82,12 @@ const processMedia = async (files, body) => {
     const type = body.mediaType || (mainFile.mimetype.startsWith('video/') ? 'video' : 'image');
     console.log(`[MediaService] Processed uploaded file: ${mainFile.originalname} as ${type} -> URL: ${mainUrl}`);
 
-    const posterUrl = videoThumbOptUrl;
-
     media.push({
       type: type,
       url: mainUrl,
       public_id: mainFile.filename,
       resource_type: mainFile.mimetype.startsWith('video/') ? 'video' : 'image',
-      ...(posterUrl && { thumbnailUrl: posterUrl }),
+      ...(effectivePosterUrl && { thumbnailUrl: effectivePosterUrl }),
       isFeatured: true,
       order: 0
     });

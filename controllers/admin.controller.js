@@ -124,10 +124,8 @@ exports.createProject = async (req, res) => {
       });
     }
 
-    const [media, coverImage] = await Promise.all([
-      processMedia(req.files, req.body),
-      processCoverImage(req.files)
-    ]);
+    const coverImage = await processCoverImage(req.files);
+    const media = await processMedia(req.files, req.body, coverImage);
 
     console.log(`[createProject] Cover image optimized: ${coverImage}`);
 
@@ -154,6 +152,9 @@ exports.updateProject = async (req, res) => {
   try {
     const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType } = req.body;
 
+    const existingProject = await Project.findById(req.params.id);
+    if (!existingProject) return res.status(404).json({ success: false, message: 'Project not found' });
+
     const update = {
       title, slug,
       category: categoryId,
@@ -165,23 +166,28 @@ exports.updateProject = async (req, res) => {
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
 
-    if (req.files && (req.files['media'] || req.files['videoThumbnail']) || req.body.embedUrl) {
-      const newMedia = await processMedia(req.files, req.body);
-      if (newMedia.length > 0) {
-        update.media = newMedia;
-      } else if (req.files && req.files['videoThumbnail']) {
-        const thumbFile = req.files['videoThumbnail'][0];
-        update['media.0.thumbnailUrl'] = await optimizeCoverImage(thumbFile.filename);
-      }
-    }
-
     const coverImage = await processCoverImage(req.files);
     if (coverImage) {
       update.coverImage = coverImage;
     }
 
+    const effectiveCover = coverImage || existingProject.coverImage;
+
+    if (req.files && (req.files['media'] || req.files['videoThumbnail']) || req.body.embedUrl) {
+      const newMedia = await processMedia(req.files, req.body, effectiveCover);
+      if (newMedia.length > 0) {
+        update.media = newMedia;
+      } else if (req.files && req.files['videoThumbnail']) {
+        const thumbFile = req.files['videoThumbnail'][0];
+        const thumbUrl = await optimizeCoverImage(thumbFile.filename);
+        if (existingProject.media && existingProject.media.length > 0) {
+          existingProject.media[0].thumbnailUrl = thumbUrl;
+          update.media = existingProject.media;
+        }
+      }
+    }
+
     const project = await Project.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
-    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
     res.json({ success: true, data: project });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
