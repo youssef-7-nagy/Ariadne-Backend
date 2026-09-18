@@ -17,6 +17,7 @@ router.post("/reset-password", authController.resetPassword);
 
 router.get("/users", authMiddleWare, adminOnly, authController.getAllUsers);
 router.put("/users/:id/role", authMiddleWare, superAdminOnly, authController.updateUserRole);
+router.delete("/users/:id", authMiddleWare, superAdminOnly, authController.deleteUser);
 
 // Legacy route kept for backwards-compatibility during transition
 router.post("/google", authController.googleLogin);

@@ -288,6 +288,30 @@ async function updateUserRole(request, response) {
   }
 }
 
+async function deleteUser(request, response) {
+  try {
+    if (request.user.role !== "superadmin") {
+      return response.status(403).json({ message: "Only a Super Admin can delete users" });
+    }
+
+    const { id } = request.params;
+    
+    if (id === request.user.id) {
+       return response.status(400).json({ message: "You cannot delete yourself" });
+    }
+
+    const user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return response.status(404).json({ message: "User not found" });
+    }
+
+    return response.json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    return response.status(500).json({ message: "Internal server error" });
+  }
+}
+
 async function updateMyGender(request, response) {
   try {
     const { error, value } = genderSchema.validate(request.body);
@@ -385,6 +409,7 @@ module.exports = {
   resetPassword,
   getAllUsers,
   updateUserRole,
+  deleteUser,
   updateMyGender,
   googleLogin,
   oauthCallback,
