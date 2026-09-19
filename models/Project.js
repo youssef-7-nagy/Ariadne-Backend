@@ -32,6 +32,7 @@ const projectSchema = new mongoose.Schema({
   }],
   
   mediaType: { type: String, enum: ['video', 'gallery'], default: 'video' },
+  isPortrait: { type: Boolean, default: false },
   order: { type: Number, default: 0, index: true },
   isPublished: { type: Boolean, default: true }
 }, { timestamps: true });

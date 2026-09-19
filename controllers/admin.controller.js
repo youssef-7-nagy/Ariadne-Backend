@@ -114,7 +114,7 @@ exports.getProjects = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait } = req.body;
 
     // ── Mandatory cover image validation ──
     if (!req.files || !req.files['coverImage'] || req.files['coverImage'].length === 0) {
@@ -137,6 +137,7 @@ exports.createProject = async (req, res) => {
       externalLink,
       youtubeUrl: youtubeUrl || '',
       mediaType: mediaType || 'video',
+      isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       media,
       coverImage
@@ -150,7 +151,7 @@ exports.createProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait } = req.body;
 
     const existingProject = await Project.findById(req.params.id);
     if (!existingProject) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -163,6 +164,7 @@ exports.updateProject = async (req, res) => {
       externalLink,
       youtubeUrl: youtubeUrl || '',
       mediaType: mediaType || 'video',
+      isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
 
