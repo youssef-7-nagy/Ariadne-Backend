@@ -15,6 +15,16 @@ const transactionSchema = new mongoose.Schema(
       default: "cash",
       required: true 
     },
+    category: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Category" 
+    },
+    categoryName: { type: String },
+    project: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Project" 
+    },
+    projectName: { type: String },
     date: { type: Date, default: Date.now }
   },
   { timestamps: true }

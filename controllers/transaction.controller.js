@@ -1,17 +1,44 @@
 const Transaction = require("../models/Transaction");
+const Category = require("../models/Category");
+const Project = require("../models/Project");
 
 exports.createTransaction = async (req, res) => {
   try {
-    const { clientName, serviceName, amount, paymentMethod } = req.body;
+    const { clientName, serviceName, amount, paymentMethod, category, project, categoryName, projectName } = req.body;
     const normalizedMethod = String(paymentMethod || 'cash').toLowerCase().trim();
+
+    let finalCategoryName = categoryName;
+    let finalProjectName = projectName;
+
+    if (category && !finalCategoryName) {
+      const catDoc = await Category.findById(category);
+      if (catDoc) finalCategoryName = catDoc.name;
+    }
+
+    if (project && !finalProjectName) {
+      const projDoc = await Project.findById(project);
+      if (projDoc) finalProjectName = projDoc.title;
+    }
+
+    const finalServiceName = serviceName || finalProjectName || finalCategoryName || 'Project Service';
+
     const newTransaction = new Transaction({ 
       clientName, 
-      serviceName, 
+      serviceName: finalServiceName, 
       amount: Number(amount), 
-      paymentMethod: normalizedMethod 
+      paymentMethod: normalizedMethod,
+      category: category || null,
+      categoryName: finalCategoryName || '',
+      project: project || null,
+      projectName: finalProjectName || ''
     });
     await newTransaction.save();
-    res.status(201).json({ success: true, data: newTransaction });
+
+    const populated = await Transaction.findById(newTransaction._id)
+      .populate('category', 'name slug')
+      .populate('project', 'title slug coverImage');
+
+    res.status(201).json({ success: true, data: populated || newTransaction });
   } catch (error) {
     console.error("Error creating transaction:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -20,7 +47,10 @@ exports.createTransaction = async (req, res) => {
 
 exports.getTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find().sort({ createdAt: -1 });
+    const transactions = await Transaction.find()
+      .populate('category', 'name slug')
+      .populate('project', 'title slug coverImage')
+      .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: transactions });
   } catch (error) {
     console.error("Error fetching transactions:", error);
@@ -37,7 +67,10 @@ exports.getTransactionsByClient = async (req, res) => {
     // Case-insensitive regex search
     const transactions = await Transaction.find({ 
       clientName: { $regex: new RegExp(`^${clientName}$`, 'i') } 
-    }).sort({ createdAt: -1 });
+    })
+      .populate('category', 'name slug')
+      .populate('project', 'title slug coverImage')
+      .sort({ createdAt: -1 });
     
     res.status(200).json({ success: true, data: transactions });
   } catch (error) {
@@ -67,7 +100,24 @@ exports.updateTransaction = async (req, res) => {
     if (updateData.paymentMethod) {
       updateData.paymentMethod = String(updateData.paymentMethod).toLowerCase().trim();
     }
-    const updated = await Transaction.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+    if (updateData.category && !updateData.categoryName) {
+      const catDoc = await Category.findById(updateData.category);
+      if (catDoc) updateData.categoryName = catDoc.name;
+    }
+    if (updateData.project && !updateData.projectName) {
+      const projDoc = await Project.findById(updateData.project);
+      if (projDoc) updateData.projectName = projDoc.title;
+    }
+
+    if (!updateData.serviceName && (updateData.projectName || updateData.categoryName)) {
+      updateData.serviceName = updateData.projectName || updateData.categoryName;
+    }
+
+    const updated = await Transaction.findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
+      .populate('category', 'name slug')
+      .populate('project', 'title slug coverImage');
+
     if (!updated) {
       return res.status(404).json({ success: false, message: "Transaction not found" });
     }
