@@ -30,19 +30,18 @@ const optimizeCoverImage = async (originalFilename) => {
   const outputPath = path.join(UPLOAD_DIR, optimizedFilename);
 
   try {
-    // Ultra High Quality 8K Sharp pipeline
+    // Ultra High Quality 4K Ultra-HD Sharp pipeline
     await sharp(inputPath, { limitInputPixels: false })
       .resize({
-        width: 7680,
-        height: 4320,
+        width: 3840,
+        height: 2160,
         fit: 'inside',
         withoutEnlargement: true
       })
       .webp({
-        quality: 100,
-        effort: 6,
-        smartSubsample: false, // Preserves 4:4:4 full color fidelity
-        reductionEffort: 6
+        quality: 85,
+        effort: 4,
+        smartSubsample: true
       })
       .toFile(outputPath);
 

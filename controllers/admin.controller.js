@@ -8,7 +8,7 @@ const { processMedia, processCoverImage } = require('../services/media.service')
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ order: 1 });
+    const categories = await Category.find().sort({ order: 1 }).lean();
     res.json({ success: true, data: categories });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -91,21 +91,26 @@ exports.getProjects = async (req, res) => {
       ];
     }
 
-    const projects = await Project.find(filter)
-      .sort({ order: 1, date: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .populate({
-        path: 'category',
-        select: 'name'
-      });
+    const limitNum = parseInt(limit, 10) || 100;
+    const pageNum = parseInt(page, 10) || 1;
 
-    const total = await Project.countDocuments(filter);
+    const [projects, total] = await Promise.all([
+      Project.find(filter)
+        .sort({ order: 1, date: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .populate({
+          path: 'category',
+          select: 'name'
+        })
+        .lean(),
+      Project.countDocuments(filter)
+    ]);
 
     res.json({
       success: true,
       data: projects,
-      pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) }
+      pagination: { total, page: pageNum, pages: Math.ceil(total / limitNum) }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

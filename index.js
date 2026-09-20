@@ -58,14 +58,17 @@ app.use(cors({
 
 // Serve static upload files – with range-request support for large video streaming
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '1d',
+  maxAge: '7d',
+  etag: true,
   acceptRanges: true,   // enables seek/scrub for large videos
   setHeaders: (res, filePath) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     if (/\.(mp4|mov|avi|webm|mkv|m4v|hevc)$/i.test(filePath)) {
       res.setHeader('Content-Type', 'video/mp4');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+    } else if (/\.(webp|jpg|jpeg|png|gif|avif|svg)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
     }
   }
 }));

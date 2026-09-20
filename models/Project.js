@@ -39,5 +39,8 @@ const projectSchema = new mongoose.Schema({
 
 projectSchema.index({ category: 1, order: 1 });
 projectSchema.index({ category: 1, date: -1 });
+projectSchema.index({ category: 1, isPublished: 1, date: -1 });
+projectSchema.index({ clientName: 1, isPublished: 1 });
+projectSchema.index({ isPublished: 1, date: -1 });
 
 module.exports = mongoose.model('Project', projectSchema);
