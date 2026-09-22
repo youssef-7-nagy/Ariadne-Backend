@@ -19,12 +19,16 @@ const { optimizeCoverImage } = require('../services/imageOptimizer');
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, slug, description } = req.body;
+    const { name, slug, description, isActive } = req.body;
     let coverImage = undefined;
     if (req.file) {
       coverImage = await optimizeCoverImage(req.file.filename);
     }
-    const category = new Category({ name, slug, description, ...(coverImage && { coverImage }) });
+    const category = new Category({ 
+      name, slug, description, 
+      ...(isActive !== undefined && { isActive: isActive === 'true' || isActive === true }),
+      ...(coverImage && { coverImage }) 
+    });
     await category.save();
     res.status(201).json({ success: true, data: category });
   } catch (error) {
@@ -34,8 +38,11 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, slug, description } = req.body;
+    const { name, slug, description, isActive } = req.body;
     const update = { name, slug, description };
+    if (isActive !== undefined) {
+      update.isActive = isActive === 'true' || isActive === true;
+    }
     if (req.file) {
       update.coverImage = await optimizeCoverImage(req.file.filename);
     }
