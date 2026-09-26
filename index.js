@@ -56,6 +56,27 @@ app.use(cors({
   credentials: true
 }));
 
+// Responsive variant fallback: If e.g. opt_xyz_600w.webp was requested but only opt_xyz.webp exists on disk,
+// gracefully serve the master image to prevent 404s for legacy uploads
+app.get('/uploads/:filename', (req, res, next) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadDir, filename);
+  if (!fs.existsSync(filePath)) {
+    const variantMatch = filename.match(/^(opt_.+)_(600w|1200w|2400w)\.webp$/i);
+    if (variantMatch) {
+      const masterName = `${variantMatch[1]}.webp`;
+      const masterPath = path.join(uploadDir, masterName);
+      if (fs.existsSync(masterPath)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        return res.sendFile(masterPath);
+      }
+    }
+  }
+  next();
+});
+
 // Serve static upload files – with range-request support for large video streaming
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   maxAge: '7d',

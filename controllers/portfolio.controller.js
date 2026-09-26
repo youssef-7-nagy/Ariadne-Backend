@@ -1,5 +1,7 @@
+const mongoose = require('mongoose');
 const Category = require('../models/Category');
 const Project = require('../models/Project');
+const { User } = require('../models/User');
 
 exports.getCategories = async (req, res) => {
   try {
@@ -72,17 +74,47 @@ exports.getProjectBySlug = async (req, res) => {
 
 exports.getProjectsByClient = async (req, res) => {
   try {
-    const clientName = decodeURIComponent(req.params.clientName);
+    const rawClientParam = decodeURIComponent(req.params.clientName).trim();
+    const isObjectId = mongoose.Types.ObjectId.isValid(rawClientParam);
+
+    let matchedUserId = isObjectId ? rawClientParam : null;
+    let displayName = rawClientParam;
+
+    if (!matchedUserId) {
+      const user = await User.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${rawClientParam}$`, 'i') } },
+          { email: rawClientParam.toLowerCase() }
+        ]
+      }).select('_id name').lean();
+
+      if (user) {
+        matchedUserId = user._id;
+        displayName = user.name;
+      }
+    } else {
+      const user = await User.findById(matchedUserId).select('name').lean();
+      if (user) displayName = user.name;
+    }
+
+    const orFilters = [
+      { clientName: { $regex: new RegExp(`^${displayName}$`, 'i') } }
+    ];
+    if (matchedUserId) {
+      orFilters.push({ clientId: matchedUserId });
+    }
+
     const projects = await Project.find({
-      clientName: { $regex: new RegExp(`^${clientName}$`, 'i') },
+      $or: orFilters,
       isPublished: { $ne: false },
       isHidden: { $ne: true }
     })
       .sort({ order: 1, date: -1 })
       .populate('category', 'name slug')
+      .populate('clientId', 'name email avatar')
       .lean();
 
-    res.json({ success: true, data: projects, clientName });
+    res.json({ success: true, data: projects, clientName: displayName });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

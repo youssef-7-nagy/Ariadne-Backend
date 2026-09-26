@@ -12,6 +12,11 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, required: true },
   date: { type: Date, required: true },
   clientName: { type: String },
+  clientId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    index: true 
+  },
   tags: [{ type: String, index: true }],
   externalLink: { type: String }, // YouTube or any external URL
   youtubeUrl: { type: String },   // Dedicated YouTube URL field (optional)
@@ -43,6 +48,7 @@ projectSchema.index({ category: 1, isHidden: 1, order: 1 });
 projectSchema.index({ category: 1, date: -1 });
 projectSchema.index({ category: 1, isPublished: 1, date: -1 });
 projectSchema.index({ clientName: 1, isPublished: 1 });
+projectSchema.index({ clientId: 1, isPublished: 1 });
 projectSchema.index({ isPublished: 1, date: -1 });
 
 module.exports = mongoose.model('Project', projectSchema);

@@ -24,39 +24,53 @@ const optimizeCoverImage = async (originalFilename) => {
     return `/uploads/${originalFilename}`;
   }
 
-  // Generate optimized filename
+  // Generate optimized filenames
   const baseName = path.basename(originalFilename, path.extname(originalFilename));
   const optimizedFilename = `opt_${baseName}.webp`;
   const outputPath = path.join(UPLOAD_DIR, optimizedFilename);
 
   try {
-    // Ultra High Quality Sharp pipeline with automatic EXIF orientation normalization
-    await sharp(inputPath, { limitInputPixels: false })
-      .rotate()
-      .resize({
-        width: 3840,
-        height: 3840,
-        fit: 'inside',
-        withoutEnlargement: true
-      })
-      .webp({
-        quality: 85,
-        effort: 4,
-        smartSubsample: true
-      })
-      .toFile(outputPath);
+    // Pipeline with automatic EXIF orientation normalization
+    const pipeline = sharp(inputPath, { limitInputPixels: false }).rotate();
+
+    // Concurrently generate multi-tier responsive WebP targets:
+    // 1. Master Ultra-HD (3840px max)
+    // 2. Desktop/Retina 2400w (2400px max)
+    // 3. Tablet/Medium 1200w (1200px max)
+    // 4. Mobile/Thumbnail 600w (600px max)
+    await Promise.all([
+      pipeline.clone()
+        .resize({ width: 3840, height: 3840, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 85, effort: 4, smartSubsample: true })
+        .toFile(outputPath),
+
+      pipeline.clone()
+        .resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 84, effort: 3, smartSubsample: true })
+        .toFile(path.join(UPLOAD_DIR, `opt_${baseName}_2400w.webp`)),
+
+      pipeline.clone()
+        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82, effort: 3, smartSubsample: true })
+        .toFile(path.join(UPLOAD_DIR, `opt_${baseName}_1200w.webp`)),
+
+      pipeline.clone()
+        .resize({ width: 600, height: 600, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80, effort: 3, smartSubsample: true })
+        .toFile(path.join(UPLOAD_DIR, `opt_${baseName}_600w.webp`))
+    ]);
 
     const originalStats = fs.statSync(inputPath);
     const optimizedStats = fs.statSync(outputPath);
 
     console.log(
-      `[ImageOptimizer] 8K Ultra-HD Processed: ${originalFilename} (${(originalStats.size / 1024).toFixed(0)}KB)` +
-      ` → ${optimizedFilename} (${(optimizedStats.size / 1024).toFixed(0)}KB) @ 8K Quality 100`
+      `[ImageOptimizer] Multi-Tier Responsive Processed: ${originalFilename} (${(originalStats.size / 1024).toFixed(0)}KB)` +
+      ` → Master (${(optimizedStats.size / 1024).toFixed(0)}KB) + 600w/1200w/2400w variants generated`
     );
 
     return `/uploads/${optimizedFilename}`;
   } catch (err) {
-    console.error(`[ImageOptimizer] Warning: Could not process ${originalFilename}, falling back to 8K raw original: ${err.message}`);
+    console.error(`[ImageOptimizer] Warning: Could not process ${originalFilename}, falling back to raw original: ${err.message}`);
     // Fallback directly to raw original image file
     return `/uploads/${originalFilename}`;
   }

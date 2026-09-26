@@ -1,5 +1,6 @@
 const Category = require('../models/Category');
 const Project = require('../models/Project');
+const { User } = require('../models/User');
 const { processMedia, processCoverImage } = require('../services/media.service');
 
 // =======================
@@ -110,6 +111,10 @@ exports.getProjects = async (req, res) => {
           path: 'category',
           select: 'name'
         })
+        .populate({
+          path: 'clientId',
+          select: 'name email avatar'
+        })
         .lean(),
       Project.countDocuments(filter)
     ]);
@@ -126,7 +131,20 @@ exports.getProjects = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, galleryStructure } = req.body;
+    let { title, slug, categoryId, description, date, clientName, clientId, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, galleryStructure } = req.body;
+
+    // Resolve clientId if not explicitly provided but clientName matches an existing user
+    if (!clientId && clientName && clientName.trim()) {
+      const matchedUser = await User.findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${clientName.trim()}$`, 'i') } },
+          { email: clientName.trim().toLowerCase() }
+        ]
+      }).select('_id name');
+      if (matchedUser) {
+        clientId = matchedUser._id;
+      }
+    }
 
     // ── Mandatory cover image validation ──
     if (!req.files || !req.files['coverImage'] || req.files['coverImage'].length === 0) {
@@ -185,6 +203,7 @@ exports.createProject = async (req, res) => {
       category: categoryId,
       description, date,
       clientName,
+      clientId: clientId || undefined,
       externalLink,
       youtubeUrl: youtubeUrl || '',
       mediaType: mediaType || 'video',
@@ -205,7 +224,7 @@ exports.createProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, isPublished, galleryStructure } = req.body;
+    const { title, slug, categoryId, description, date, clientName, clientId, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, isPublished, galleryStructure } = req.body;
 
     const existingProject = await Project.findById(req.params.id);
     if (!existingProject) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -221,6 +240,17 @@ exports.updateProject = async (req, res) => {
       isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
+
+    if (clientId !== undefined) {
+      update.clientId = clientId || null;
+    } else if (clientName && clientName.trim() && clientName !== existingProject.clientName) {
+      const matchedUser = await User.findOne({
+        name: { $regex: new RegExp(`^${clientName.trim()}$`, 'i') }
+      }).select('_id');
+      if (matchedUser) {
+        update.clientId = matchedUser._id;
+      }
+    }
 
     if (isHidden !== undefined) {
       const isHiddenBool = isHidden === 'true' || isHidden === true;
