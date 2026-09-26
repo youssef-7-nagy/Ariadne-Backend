@@ -34,10 +34,12 @@ const projectSchema = new mongoose.Schema({
   mediaType: { type: String, enum: ['video', 'gallery'], default: 'video' },
   isPortrait: { type: Boolean, default: false },
   order: { type: Number, default: 0, index: true },
-  isPublished: { type: Boolean, default: true }
+  isPublished: { type: Boolean, default: true },
+  isHidden: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
 
 projectSchema.index({ category: 1, order: 1 });
+projectSchema.index({ category: 1, isHidden: 1, order: 1 });
 projectSchema.index({ category: 1, date: -1 });
 projectSchema.index({ category: 1, isPublished: 1, date: -1 });
 projectSchema.index({ clientName: 1, isPublished: 1 });

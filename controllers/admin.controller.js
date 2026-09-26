@@ -126,7 +126,7 @@ exports.getProjects = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden } = req.body;
 
     // ── Mandatory cover image validation ──
     if (!req.files || !req.files['coverImage'] || req.files['coverImage'].length === 0) {
@@ -141,6 +141,12 @@ exports.createProject = async (req, res) => {
 
     console.log(`[createProject] Cover image optimized: ${coverImage}`);
 
+    // Calculate order scoped to category
+    const lastProj = await Project.findOne({ category: categoryId }).sort({ order: -1 }).select('order').lean();
+    const order = (lastProj && typeof lastProj.order === 'number') ? lastProj.order + 1 : 0;
+
+    const isHiddenBool = isHidden === 'true' || isHidden === true;
+
     const project = new Project({
       title, slug,
       category: categoryId,
@@ -152,7 +158,10 @@ exports.createProject = async (req, res) => {
       isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       media,
-      coverImage
+      coverImage,
+      order,
+      isHidden: isHiddenBool,
+      isPublished: !isHiddenBool
     });
     await project.save();
     res.status(201).json({ success: true, data: project });
@@ -163,7 +172,7 @@ exports.createProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, isPublished } = req.body;
 
     const existingProject = await Project.findById(req.params.id);
     if (!existingProject) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -179,6 +188,22 @@ exports.updateProject = async (req, res) => {
       isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
+
+    if (isHidden !== undefined) {
+      const isHiddenBool = isHidden === 'true' || isHidden === true;
+      update.isHidden = isHiddenBool;
+      update.isPublished = !isHiddenBool;
+    } else if (isPublished !== undefined) {
+      const isPubBool = isPublished === 'true' || isPublished === true;
+      update.isPublished = isPubBool;
+      update.isHidden = !isPubBool;
+    }
+
+    // If category changed, assign next available order in the new category
+    if (categoryId && existingProject.category && existingProject.category.toString() !== categoryId.toString()) {
+      const lastProj = await Project.findOne({ category: categoryId }).sort({ order: -1 }).select('order').lean();
+      update.order = (lastProj && typeof lastProj.order === 'number') ? lastProj.order + 1 : 0;
+    }
 
     const coverImage = await processCoverImage(req.files);
     if (coverImage) {
@@ -213,6 +238,30 @@ exports.deleteProject = async (req, res) => {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
     res.json({ success: true, message: 'Project deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.toggleProjectVisibility = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
+
+    let newIsHidden;
+    if (req.body.isHidden !== undefined) {
+      newIsHidden = req.body.isHidden === true || req.body.isHidden === 'true';
+    } else if (req.body.isPublished !== undefined) {
+      newIsHidden = !(req.body.isPublished === true || req.body.isPublished === 'true');
+    } else {
+      newIsHidden = !project.isHidden;
+    }
+
+    project.isHidden = newIsHidden;
+    project.isPublished = !newIsHidden;
+    await project.save();
+
+    res.json({ success: true, data: project });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

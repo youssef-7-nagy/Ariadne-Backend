@@ -21,13 +21,19 @@ exports.getProjectsByCategory = async (req, res) => {
     const limitNum = parseInt(limit, 10) || 10;
     const pageNum = parseInt(page, 10) || 1;
 
+    const queryFilter = {
+      category: category._id,
+      isPublished: { $ne: false },
+      isHidden: { $ne: true }
+    };
+
     const [projects, total] = await Promise.all([
-      Project.find({ category: category._id, isPublished: true })
-        .sort({ date: -1 })
+      Project.find(queryFilter)
+        .sort({ order: 1, date: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean(),
-      Project.countDocuments({ category: category._id, isPublished: true })
+      Project.countDocuments(queryFilter)
     ]);
 
     res.json({ 
@@ -48,7 +54,11 @@ exports.getProjectsByCategory = async (req, res) => {
 exports.getProjectBySlug = async (req, res) => {
   try {
     const { projectSlug } = req.params;
-    const project = await Project.findOne({ slug: projectSlug, isPublished: true })
+    const project = await Project.findOne({
+      slug: projectSlug,
+      isPublished: { $ne: false },
+      isHidden: { $ne: true }
+    })
       .populate('category', 'name slug')
       .lean();
     
@@ -65,9 +75,10 @@ exports.getProjectsByClient = async (req, res) => {
     const clientName = decodeURIComponent(req.params.clientName);
     const projects = await Project.find({
       clientName: { $regex: new RegExp(`^${clientName}$`, 'i') },
-      isPublished: true
+      isPublished: { $ne: false },
+      isHidden: { $ne: true }
     })
-      .sort({ date: -1 })
+      .sort({ order: 1, date: -1 })
       .populate('category', 'name slug')
       .lean();
 

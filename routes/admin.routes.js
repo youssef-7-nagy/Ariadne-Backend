@@ -23,6 +23,7 @@ router.delete('/categories/:id', adminController.deleteCategory);
 router.get('/projects', adminController.getProjects);
 router.post('/projects', upload.fields([{ name: 'media', maxCount: 20 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.createProject);
 router.put('/projects/reorder', adminController.reorderProjects); // before /:id
+router.patch('/projects/:id/visibility', adminController.toggleProjectVisibility);
 router.put('/projects/:id', upload.fields([{ name: 'media', maxCount: 20 }, { name: 'coverImage', maxCount: 1 }, { name: 'videoThumbnail', maxCount: 1 }]), adminController.updateProject);
 router.delete('/projects/:id', adminController.deleteProject);
 
