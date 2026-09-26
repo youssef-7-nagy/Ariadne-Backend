@@ -126,7 +126,7 @@ exports.getProjects = async (req, res) => {
 
 exports.createProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, galleryStructure } = req.body;
 
     // ── Mandatory cover image validation ──
     if (!req.files || !req.files['coverImage'] || req.files['coverImage'].length === 0) {
@@ -137,7 +137,40 @@ exports.createProject = async (req, res) => {
     }
 
     const coverImage = await processCoverImage(req.files);
-    const media = await processMedia(req.files, req.body, coverImage);
+
+    let media;
+    if (mediaType === 'gallery' && galleryStructure) {
+      const parsedStructure = typeof galleryStructure === 'string' ? JSON.parse(galleryStructure) : galleryStructure;
+      const galleryFiles = req.files && req.files['media'] ? req.files['media'] : [];
+      const optimizedFiles = [];
+      for (let i = 0; i < galleryFiles.length; i++) {
+        const f = galleryFiles[i];
+        console.log(`[createProject] Optimizing gallery image ${i + 1}/${galleryFiles.length}: ${f.originalname}`);
+        const optimizedUrl = await optimizeCoverImage(f.filename);
+        optimizedFiles.push({
+          type: 'image',
+          url: optimizedUrl,
+          public_id: f.filename,
+          resource_type: 'image'
+        });
+      }
+
+      media = parsedStructure.map((item, idx) => {
+        const fileIdx = item.index ?? item.newFileIndex;
+        const opt = optimizedFiles[fileIdx];
+        if (!opt) return null;
+        return {
+          type: 'image',
+          url: opt.url,
+          public_id: opt.public_id,
+          resource_type: 'image',
+          isFeatured: idx === 0,
+          order: idx
+        };
+      }).filter(Boolean);
+    } else {
+      media = await processMedia(req.files, req.body, coverImage);
+    }
 
     console.log(`[createProject] Cover image optimized: ${coverImage}`);
 
@@ -172,7 +205,7 @@ exports.createProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, isPublished } = req.body;
+    const { title, slug, categoryId, description, date, clientName, tags, externalLink, youtubeUrl, mediaType, isPortrait, isHidden, isPublished, galleryStructure } = req.body;
 
     const existingProject = await Project.findById(req.params.id);
     if (!existingProject) return res.status(404).json({ success: false, message: 'Project not found' });
@@ -184,7 +217,7 @@ exports.updateProject = async (req, res) => {
       clientName,
       externalLink,
       youtubeUrl: youtubeUrl || '',
-      mediaType: mediaType || 'video',
+      mediaType: mediaType || existingProject.mediaType || 'video',
       isPortrait: isPortrait === 'true' || isPortrait === true,
       tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
     };
@@ -212,16 +245,71 @@ exports.updateProject = async (req, res) => {
 
     const effectiveCover = coverImage || existingProject.coverImage;
 
-    if (req.files && (req.files['media'] || req.files['videoThumbnail']) || req.body.embedUrl) {
-      const newMedia = await processMedia(req.files, req.body, effectiveCover);
-      if (newMedia.length > 0) {
-        update.media = newMedia;
-      } else if (req.files && req.files['videoThumbnail']) {
-        const thumbFile = req.files['videoThumbnail'][0];
-        const thumbUrl = await optimizeCoverImage(thumbFile.filename);
-        if (existingProject.media && existingProject.media.length > 0) {
-          existingProject.media[0].thumbnailUrl = thumbUrl;
-          update.media = existingProject.media;
+    // Gallery project update with explicit galleryStructure
+    if ((update.mediaType === 'gallery') && galleryStructure !== undefined) {
+      const parsedStructure = typeof galleryStructure === 'string' ? JSON.parse(galleryStructure) : galleryStructure;
+      const galleryFiles = req.files && req.files['media'] ? req.files['media'] : [];
+
+      // Optimize newly uploaded gallery images
+      const optimizedNewFiles = [];
+      for (let i = 0; i < galleryFiles.length; i++) {
+        const f = galleryFiles[i];
+        console.log(`[updateProject] Optimizing new gallery image ${i + 1}/${galleryFiles.length}: ${f.originalname}`);
+        const optimizedUrl = await optimizeCoverImage(f.filename);
+        optimizedNewFiles.push({
+          type: 'image',
+          url: optimizedUrl,
+          public_id: f.filename,
+          resource_type: 'image'
+        });
+      }
+
+      // Map existing media by _id and url
+      const existingMediaMap = new Map();
+      (existingProject.media || []).forEach(m => {
+        if (m._id) existingMediaMap.set(m._id.toString(), m);
+        if (m.url) existingMediaMap.set(m.url, m);
+      });
+
+      const finalMedia = [];
+      for (let i = 0; i < parsedStructure.length; i++) {
+        const item = parsedStructure[i];
+        if (item.type === 'existing') {
+          const match = (item.id && existingMediaMap.get(item.id.toString())) || (item.url && existingMediaMap.get(item.url));
+          if (match) {
+            const mObj = match.toObject ? match.toObject() : { ...match };
+            mObj.order = i;
+            mObj.isFeatured = (i === 0);
+            finalMedia.push(mObj);
+          }
+        } else if (item.type === 'new') {
+          const fileIdx = item.index ?? item.newFileIndex;
+          if (optimizedNewFiles[fileIdx]) {
+            finalMedia.push({
+              type: 'image',
+              url: optimizedNewFiles[fileIdx].url,
+              public_id: optimizedNewFiles[fileIdx].public_id,
+              resource_type: 'image',
+              isFeatured: (i === 0),
+              order: i
+            });
+          }
+        }
+      }
+      update.media = finalMedia;
+    } else {
+      // Non-gallery or fallback logic (e.g. video / trailer / embed)
+      if (req.files && (req.files['media'] || req.files['videoThumbnail']) || req.body.embedUrl) {
+        const newMedia = await processMedia(req.files, req.body, effectiveCover);
+        if (newMedia.length > 0) {
+          update.media = newMedia;
+        } else if (req.files && req.files['videoThumbnail']) {
+          const thumbFile = req.files['videoThumbnail'][0];
+          const thumbUrl = await optimizeCoverImage(thumbFile.filename);
+          if (existingProject.media && existingProject.media.length > 0) {
+            existingProject.media[0].thumbnailUrl = thumbUrl;
+            update.media = existingProject.media;
+          }
         }
       }
     }
