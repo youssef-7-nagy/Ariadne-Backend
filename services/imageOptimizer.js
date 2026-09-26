@@ -30,11 +30,12 @@ const optimizeCoverImage = async (originalFilename) => {
   const outputPath = path.join(UPLOAD_DIR, optimizedFilename);
 
   try {
-    // Ultra High Quality 4K Ultra-HD Sharp pipeline
+    // Ultra High Quality Sharp pipeline with automatic EXIF orientation normalization
     await sharp(inputPath, { limitInputPixels: false })
+      .rotate()
       .resize({
         width: 3840,
-        height: 2160,
+        height: 3840,
         fit: 'inside',
         withoutEnlargement: true
       })
