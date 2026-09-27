@@ -25,10 +25,10 @@ exports.createCategory = async (req, res) => {
     if (req.file) {
       coverImage = await optimizeCoverImage(req.file.filename);
     }
-    const category = new Category({ 
-      name, slug, description, 
+    const category = new Category({
+      name, slug, description,
       ...(isActive !== undefined && { isActive: isActive === 'true' || isActive === true }),
-      ...(coverImage && { coverImage }) 
+      ...(coverImage && { coverImage })
     });
     await category.save();
     res.status(201).json({ success: true, data: category });
@@ -399,4 +399,8 @@ exports.reorderProjects = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+  } catch (error) {
+  res.status(500).json({ success: false, message: error.message });
+}
 };
