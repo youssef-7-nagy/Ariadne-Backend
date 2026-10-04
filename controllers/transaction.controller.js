@@ -50,11 +50,21 @@ exports.getTransactions = async (req, res) => {
     const transactions = await Transaction.find()
       .populate('category', 'name slug')
       .populate('project', 'title slug coverImage')
-      .sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: transactions });
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.status(200).json({ success: true, data: transactions });
   } catch (error) {
-    console.error("Error fetching transactions:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.warn("[WARN] getTransactions failed with populate, attempting fast lean fallback:", error.message);
+    try {
+      // Fast fallback: Transaction documents already store categoryName and projectName directly
+      const fallback = await Transaction.find()
+        .sort({ createdAt: -1 })
+        .lean();
+      return res.status(200).json({ success: true, data: fallback });
+    } catch (fallbackError) {
+      console.error("Error fetching transactions:", fallbackError);
+      return res.status(500).json({ success: false, message: fallbackError.message || "Failed to fetch transactions" });
+    }
   }
 };
 
@@ -70,12 +80,24 @@ exports.getTransactionsByClient = async (req, res) => {
     })
       .populate('category', 'name slug')
       .populate('project', 'title slug coverImage')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
     
-    res.status(200).json({ success: true, data: transactions });
+    return res.status(200).json({ success: true, data: transactions });
   } catch (error) {
-    console.error("Error fetching client transactions:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.warn("[WARN] getTransactionsByClient failed with populate, attempting fast lean fallback:", error.message);
+    try {
+      const { clientName } = req.params;
+      const fallback = await Transaction.find({ 
+        clientName: { $regex: new RegExp(`^${clientName}$`, 'i') } 
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+      return res.status(200).json({ success: true, data: fallback });
+    } catch (fallbackError) {
+      console.error("Error fetching client transactions:", fallbackError);
+      return res.status(500).json({ success: false, message: fallbackError.message || "Failed to fetch client transactions" });
+    }
   }
 };
 

@@ -22,14 +22,37 @@ async function databaseConnection() {
     }
   }
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY_MS = 3000;
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY_MS = 2000;
+
+  const mongooseOptions = {
+    serverSelectionTimeoutMS: 15000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 15000,
+    maxPoolSize: 15,
+    minPoolSize: 2,
+    maxIdleTimeMS: 30000,
+    heartbeatFrequencyMS: 10000,
+    family: 4, // Force IPv4 to prevent IPv6 DNS/routing hang on Windows
+  };
+
+  // Prevent multiple listener bindings on reconnects
+  if (!mongoose.connection._hasAtlasListeners) {
+    mongoose.connection._hasAtlasListeners = true;
+    mongoose.connection.on("connected", () => {
+      console.log("[OK] MongoDB Connected successfully.");
+    });
+    mongoose.connection.on("error", (err) => {
+      console.warn("[WARN] MongoDB connection error:", err.message);
+    });
+    mongoose.connection.on("disconnected", () => {
+      console.warn("[WARN] MongoDB disconnected. Driver will attempt to reconnect.");
+    });
+  }
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      await mongoose.connect(dbUrl, {
-        serverSelectionTimeoutMS: 15000, // 15s to handle Atlas cold-starts
-      });
+      await mongoose.connect(dbUrl, mongooseOptions);
       console.log("[OK] MongoDB Connected to:", dbUrl.split("@").pop()?.split("?")[0] || "Atlas");
       return; // success
     } catch (error) {

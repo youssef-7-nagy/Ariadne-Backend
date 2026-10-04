@@ -56,12 +56,14 @@ app.use(cors({
   credentials: true
 }));
 
-// Responsive variant fallback: If e.g. opt_xyz_600w.webp was requested but only opt_xyz.webp exists on disk,
-// gracefully serve the master image to prevent 404s for legacy uploads
+// Responsive variant & unoptimized raw file fallback:
+// 1. If opt_xyz_600w.webp requested, fallback to master opt_xyz.webp
+// 2. If opt_xyz.webp requested but missing, fallback to raw original xyz.jpg/png/webp
 app.get('/uploads/:filename', (req, res, next) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadDir, filename);
   if (!fs.existsSync(filePath)) {
+    // Case 1: responsive tier fallback to master opt_
     const variantMatch = filename.match(/^(opt_.+)_(600w|1200w|2400w)\.webp$/i);
     if (variantMatch) {
       const masterName = `${variantMatch[1]}.webp`;
@@ -71,6 +73,22 @@ app.get('/uploads/:filename', (req, res, next) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         return res.sendFile(masterPath);
+      }
+    }
+
+    // Case 2: opt_ missing fallback to raw original uploaded file
+    const optMatch = filename.match(/^opt_(.+)\.(webp|jpg|jpeg|png)$/i);
+    if (optMatch) {
+      const rawBase = optMatch[1];
+      const exts = ['.jpg', '.jpeg', '.png', '.gif', '.avif', '.webp', '.JPG', '.PNG', '.JPEG'];
+      for (const ext of exts) {
+        const rawPath = path.join(uploadDir, `${rawBase}${ext}`);
+        if (fs.existsSync(rawPath)) {
+          res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+          return res.sendFile(rawPath);
+        }
       }
     }
   }

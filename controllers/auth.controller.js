@@ -127,7 +127,15 @@ async function register(request, response) {
 async function validateMe(request, response) {
   try {
     const id = request.user.id;
-    const user = await User.findById(id);
+    let user;
+    try {
+      user = await User.findById(id);
+    } catch (dbErr) {
+      console.warn("[WARN] validateMe initial DB query failed, retrying:", dbErr.message);
+      await new Promise(r => setTimeout(r, 600));
+      user = await User.findById(id);
+    }
+
     if (!user) {
       return response.status(404).json({ message: "User not found" });
     }
@@ -140,7 +148,7 @@ async function validateMe(request, response) {
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error("validateMe error:", error);
     return response.status(500).json({ message: "internal server error.." });
   }
 }
@@ -252,10 +260,17 @@ async function resetPassword(request, response) {
 
 async function getAllUsers(request, response) {
   try {
-    const users = await User.find({}).select("-password -resetPasswordToken");
+    let users;
+    try {
+      users = await User.find({}).select("-password -resetPasswordToken").lean();
+    } catch (dbErr) {
+      console.warn("[WARN] getAllUsers initial DB query failed, retrying:", dbErr.message);
+      await new Promise(r => setTimeout(r, 600));
+      users = await User.find({}).select("-password -resetPasswordToken").lean();
+    }
     return response.json({ message: "Users fetched successfully", data: users });
   } catch (error) {
-    console.log(error);
+    console.error("getAllUsers error:", error);
     return response.status(500).json({ message: "internal server error.." });
   }
 }

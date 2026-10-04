@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Category = require('../models/Category');
 const Project = require('../models/Project');
 const { User } = require('../models/User');
@@ -9,10 +10,18 @@ const { processMedia, processCoverImage } = require('../services/media.service')
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().sort({ order: 1 }).lean();
-    res.json({ success: true, data: categories });
+    let categories;
+    try {
+      categories = await Category.find().sort({ order: 1 }).lean();
+    } catch (dbErr) {
+      console.warn("[WARN] getCategories initial DB query failed, retrying:", dbErr.message);
+      await new Promise(r => setTimeout(r, 600));
+      categories = await Category.find().sort({ order: 1 }).lean();
+    }
+    return res.json({ success: true, data: categories });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[getCategories ERROR]:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -90,17 +99,19 @@ exports.getProjects = async (req, res) => {
     const { categoryId, page = 1, limit = 100, search } = req.query;
 
     let filter = {};
-    if (categoryId) filter.category = categoryId;
-    if (search) {
+    if (categoryId && typeof categoryId === 'string' && categoryId.trim() && mongoose.Types.ObjectId.isValid(categoryId.trim())) {
+      filter.category = categoryId.trim();
+    }
+    if (search && typeof search === 'string' && search.trim()) {
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { clientName: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { clientName: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } }
       ];
     }
 
-    const limitNum = parseInt(limit, 10) || 100;
-    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = Math.max(1, parseInt(limit, 10) || 100);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
 
     const [projects, total] = await Promise.all([
       Project.find(filter)
@@ -125,7 +136,24 @@ exports.getProjects = async (req, res) => {
       pagination: { total, page: pageNum, pages: Math.ceil(total / limitNum) }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.warn('[getProjects initial error, attempting fallback without populate]:', error.message);
+    try {
+      const pageNum = parseInt(req.query.page) || 1;
+      const limitNum = Math.min(parseInt(req.query.limit) || 20, 500);
+      const fallbackProjects = await Project.find()
+        .sort({ order: 1, date: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean();
+      return res.json({
+        success: true,
+        data: fallbackProjects,
+        pagination: { total: fallbackProjects.length, page: pageNum, pages: 1 }
+      });
+    } catch (fallbackError) {
+      console.error('[getProjects ERROR]:', fallbackError);
+      return res.status(500).json({ success: false, message: fallbackError.message });
+    }
   }
 };
 
@@ -294,18 +322,31 @@ exports.updateProject = async (req, res) => {
         });
       }
 
-      // Map existing media by _id and url
+      // Map existing media by _id, url, relative url, and filename
       const existingMediaMap = new Map();
       (existingProject.media || []).forEach(m => {
         if (m._id) existingMediaMap.set(m._id.toString(), m);
-        if (m.url) existingMediaMap.set(m.url, m);
+        if (m.url) {
+          existingMediaMap.set(m.url, m);
+          if (m.url.includes('/uploads/')) {
+            const relPath = `/uploads/${m.url.split('/uploads/')[1]}`;
+            existingMediaMap.set(relPath, m);
+            const baseName = m.url.split('/').pop();
+            if (baseName) existingMediaMap.set(baseName, m);
+          }
+        }
       });
 
       const finalMedia = [];
       for (let i = 0; i < parsedStructure.length; i++) {
         const item = parsedStructure[i];
         if (item.type === 'existing') {
-          const match = (item.id && existingMediaMap.get(item.id.toString())) || (item.url && existingMediaMap.get(item.url));
+          const itemUrlRel = item.url && item.url.includes('/uploads/') ? `/uploads/${item.url.split('/uploads/')[1]}` : item.url;
+          const itemBaseName = item.url ? item.url.split('/').pop() : '';
+          const match = (item.id && existingMediaMap.get(item.id.toString())) ||
+                        (item.url && existingMediaMap.get(item.url)) ||
+                        (itemUrlRel && existingMediaMap.get(itemUrlRel)) ||
+                        (itemBaseName && existingMediaMap.get(itemBaseName));
           if (match) {
             const mObj = match.toObject ? match.toObject() : { ...match };
             mObj.order = i;
@@ -341,6 +382,9 @@ exports.updateProject = async (req, res) => {
             update.media = existingProject.media;
           }
         }
+      } else if (existingProject.media && existingProject.media.length > 0) {
+        // Retain existing media when updating non-gallery project fields (e.g. title, description, category)
+        update.media = existingProject.media;
       }
     }
 
